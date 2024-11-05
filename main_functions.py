@@ -209,11 +209,11 @@ def train_feat_loop(clf, adata_raw, adata_norm, groups, num_feat_list, feat_meth
       feature_order = get_hvgs(adata_norm, curr_method)
     elif curr_method == 'random_all_genes':
       rng = np.random.default_rng(random_state)
-      feature_order = rng.choice(adata.var_names, size = adata.n_vars, replace=False)
+      feature_order = rng.choice(adata_norm.var_names, size = adata_norm.n_vars, replace=False)
     elif curr_method == 'random_per_num':
       rng = np.random.default_rng(random_state)
       for curr_num_feat in num_feat_list:
-        feature_order[curr_num_feat] = rng.choice(adata.var_names, size = curr_num_feat, replace=False)
+        feature_order[curr_num_feat] = rng.choice(adata_norm.var_names, size = curr_num_feat, replace=False)
     else:
       raise ValueError("String must be one of these values: 'seurat_v3', 'seurat', 'cell_ranger', 'pearson_residuals',\
                        'random_all_genes', 'random_per_num'")
