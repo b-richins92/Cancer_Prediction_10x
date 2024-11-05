@@ -171,13 +171,14 @@ def train_cv(clf, X, y, groups, features, metrics_dict, random_state = 0, k_fold
   return pd.DataFrame.from_dict(curr_results)
 
 # Function to loop through training function across features and HVG vs random selection methods
-def train_feat_loop(clf, adata, groups, num_feat_list, feat_method_list,
+def train_feat_loop(clf, adata_raw, adata_norm, groups, num_feat_list, feat_method_list,
                     metrics_dict, random_state = 0, k_fold = 5):
   """
     Run cross-validation with different numbers of features and feature selection methods
     Inputs:
       - clf: Classifier
-      - adata: AnnData object containing count matrix and labels
+      - adata_raw: AnnData object containing raw count matrix and labels
+      - adata_norm: AnnData object containing normalized count matrix and labels
       - groups: String indicating group to split on (should be column in adata.obs)
       - num_feat_list: List of numbers of features to use
       - feat_method_list: List of feature selection methods
@@ -198,8 +199,10 @@ def train_feat_loop(clf, adata, groups, num_feat_list, feat_method_list,
   for curr_method in feat_method_list:
     print(f'curr_method: {curr_method}')
     # Select features based on feature selection method
-    if curr_method in ['seurat_v3', 'seurat', 'cell_ranger', 'pearson_residuals']:
-      feature_order = get_hvgs(adata, curr_method)
+    if curr_method in ['seurat_v3', 'pearson_residuals']:
+      feature_order = get_hvgs(adata_raw, curr_method)
+    elif curr_method in ['seurat', 'cell_ranger']:
+      feature_order = get_hvgs(adata_norm, curr_method)
     elif curr_method == 'random_all_genes':
       rng = np.random.default_rng(random_state)
       feature_order = rng.choice(adata.var_names, size = adata.n_vars, replace=False)
