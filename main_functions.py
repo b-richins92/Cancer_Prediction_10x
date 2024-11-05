@@ -77,7 +77,6 @@ def create_adata_train(raw_counts_path, norm_counts_path, orig_labels_path):
 
   # Merge original metadata with normalized AnnData from TISCH
   adata_norm.obs = pd.merge(adata_norm.obs, orig_meta, left_index = True, right_index = True, how = 'inner')
-  display(adata_norm.obs.head())
  
   # Reorder genes by alphabetical order
   adata_norm.var = adata_norm.var.sort_index()
@@ -93,8 +92,10 @@ def create_adata_train(raw_counts_path, norm_counts_path, orig_labels_path):
 
   # Print number of cells and dataset size
   print(f'Both datasets have {adata_norm.n_obs} cells and {adata_norm.n_vars} features')
-  print(f'Size of raw dataset: {print_size_in_MB(raw_subset)}')
-  print(f'Size of normalized dataset: {print_size_in_MB(adata_norm)}')
+  print(f'Size of raw dataset: ')
+  print_size_in_MB(raw_subset)
+  print(f'Size of normalized dataset:')
+  print_size_in_MB(adata_norm)
 
   return (raw_subset, adata_norm)
 
@@ -144,8 +145,6 @@ def get_hvgs(adata, method):
   else:
     hvg_df = hvg_df.sort_values(by = 'dispersions_norm', ascending = False)
 
-  print(f'hvg_df.shape: {hvg_df.shape}')
-  display(hvg_df.head())
   return hvg_df.index
 
 # Pearson residual preprocessing
@@ -157,7 +156,7 @@ def train_cv(clf, X, y, groups, features, metrics_dict, random_state = 0, k_fold
       - clf: Classifier
       - X: Dataset
       - y: Labels
-      - groups: String indicating group to split on (should be column in adata.obs)
+      - groups: Column indicating group to split on
       - features: List of features
       - metrics_dict: Dictionary of metrics to use for scoring
       - random_state: Random state to use for k-folds
@@ -230,6 +229,8 @@ def train_feat_loop(clf, adata_raw, adata_norm, groups, num_feat_list, feat_meth
         curr_feat = feature_order[:curr_num_feat]
 
       # Get cross-validation results and concatenate to dataframe
+      print(f'adata_norm.obs['{groups}'].shape: {adata_norm.obs[groups]}')
+      print(f'type: {type(adata_norm.obs[groups])}')
       curr_results = train_cv(clf, adata_norm.to_df(), adata_norm.obs['orig_cancer_label'], adata_norm.obs[groups],
                               curr_feat, metrics_dict, random_state = random_state, k_fold = k_fold)
       curr_results['feat_sel_type'] = curr_method
