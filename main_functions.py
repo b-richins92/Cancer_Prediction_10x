@@ -281,14 +281,16 @@ def make_line_plots_metrics(results_df):
   results_test = results_df_tall[results_df_tall['metric'].str.contains('test_')]
   g1 = sns.catplot(
       data=results_test, x='num_features', y='score', col='metric',
-      hue = 'feat_sel_type', kind='point', col_wrap = 4, capsize = 0.2
+      hue = 'feat_sel_type', col_wrap = 4, kind='point', capsize = 0.2,
+      sharex = False, alpha = 0.7
   )
 
   # Plot 1 figure with all training metrics
   results_train = results_df_tall[results_df_tall['metric'].str.contains('train_')]
   g2 = sns.catplot(
       data=results_train, x='num_features', y='score', col='metric',
-      hue = 'feat_sel_type', kind='point', col_wrap = 4, capsize = 0.2
+      hue = 'feat_sel_type', col_wrap = 4, kind='point', capsize = 0.2,
+      sharex = False, alpha = 0.7
   )
 
   return g1, g2
