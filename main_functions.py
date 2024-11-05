@@ -85,8 +85,6 @@ def create_adata_train(raw_counts_path, norm_counts_path, orig_labels_path):
   raw_counts_ann.var['in_tisch'] = raw_counts_ann.var.index.isin(adata.var_names)
   raw_subset = raw_counts_ann[raw_counts_ann.obs['in_tisch'], raw_counts_ann.var['in_tisch']]
   raw_subset_x = raw_subset.X.copy()
-  print(f'type(raw_subset_x): {type(raw_subset_x)}')
-  print(f'adata.layers: {adata.layers}')
   adata = adata[raw_subset.obs_names, raw_subset.var_names]
   adata.layers['raw'] = raw_subset_x
 
@@ -128,7 +126,7 @@ def get_hvgs(adata, method):
     Purpose: Calculate list of highly variable genes using standard built-in scanpy methods
     Inputs:
       - adata: AnnData object containing raw and normalized counts
-      - method: String indicating method to use for calculating HVGs ('seurat_v3', 'seurat', 'cell_ranger', 'pearson_residuals)
+      - method: String indicating method to use for calculating HVGs ('seurat_v3', 'seurat', 'cell_ranger', 'pearson_residuals')
     Output:
       - Dataframe with genes sorted by high to low variance/dispersion
   """
@@ -151,7 +149,7 @@ def get_hvgs(adata, method):
 
 
 # Training function using cross-validation
-def train_cv(clf, X, y, groups, features, metrics_dict):
+def train_cv(clf, X, y, groups, features, metrics_dict, random_state, k_fold = 5):
   """
     Inputs: 
       - clf: Classifier
@@ -160,17 +158,19 @@ def train_cv(clf, X, y, groups, features, metrics_dict):
       - groups: Group to split on
       - features: Features
       - metrics_dict: Dictionary of metrics to use for scoring
+      - random_state: Random state to use for k-folds
+      - k_fold = Number of folds to use
     Output: 
       - Trained model
       - Dataframe with metrics per fold
   """
 
   # 5-fold cross-validation (stratified, divided by patients) for SVM
-  sgkf = StratifiedGroupKFold(n_splits=5, shuffle = True, random_state = random_state)
-  curr_results_hvg = cross_validate(clf, X[hvg_features[:curr_num_feat]], y, groups = groups, scoring = metrics_dict,
-                 cv = sgkf, return_train_score = True)
+  sgkf = StratifiedGroupKFold(n_splits=k_fold, shuffle = True, random_state = random_state)
+  curr_results = cross_validate(clf, X[features], y, groups = groups, scoring = metrics_dict,
+                 cv = sgkf.get_n_splits(), return_train_score = True)
 
-  return
+  return pd.DataFrame.from_dict(curr_results)
 
 # Function to loop through training function across features and HVG vs random selection methods
 
