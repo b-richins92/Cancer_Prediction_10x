@@ -147,6 +147,8 @@ def get_hvgs(adata, method):
   display(hvg_df.head())
   return hvg_df.index
 
+# Pearson residual preprocessing
+
 # Training function using cross-validation
 def train_cv(clf, X, y, groups, features, metrics_dict, random_state = 0, k_fold = 5):
   """
@@ -200,8 +202,10 @@ def train_feat_loop(clf, adata_raw, adata_norm, groups, num_feat_list, feat_meth
     print(f'curr_method: {curr_method}')
     # Select features based on feature selection method
     if curr_method in ['seurat_v3', 'pearson_residuals']:
+#      adata = adata_raw
       feature_order = get_hvgs(adata_raw, curr_method)
     elif curr_method in ['seurat', 'cell_ranger']:
+#      adata = adata_norm
       feature_order = get_hvgs(adata_norm, curr_method)
     elif curr_method == 'random_all_genes':
       rng = np.random.default_rng(random_state)
@@ -215,7 +219,7 @@ def train_feat_loop(clf, adata_raw, adata_norm, groups, num_feat_list, feat_meth
                        'random_all_genes', 'random_per_num'")
 
     # Loop through all numbers of features
-    for curr_num_feat in num_features:
+    for curr_num_feat in num_feat_list:
       print(f'curr_num_feat: {curr_num_feat}')
     
       # Extract top features depending on method
@@ -225,7 +229,7 @@ def train_feat_loop(clf, adata_raw, adata_norm, groups, num_feat_list, feat_meth
         curr_feat = feature_order[:curr_num_feat]
 
       # Get cross-validation results and concatenate to dataframe
-      curr_results = train_cv(clf, adata.X, adata.obs['orig_cancer_label'], adata.obs[groups],
+      curr_results = train_cv(clf, adata_norm.X, adata_norm.obs['orig_cancer_label'], adata_norm.obs[groups],
                               curr_feat, metrics_dict, random_state = random_state, k_fold = k_fold)
       curr_results['feat_sel_type'] = curr_method
       curr_results['num_features'] = curr_num_feat
@@ -264,3 +268,8 @@ def train_test_model(clf, train_df, train_labels, test_df, test_labels, features
   print(f'recall: {recall}, precision: {precision}, accuracy: {accuracy}, f1: {f1}')
 
   return clf
+
+# Print line plots of metrics
+
+
+# Calculate Jaccard coefficient overlap between feature sets
