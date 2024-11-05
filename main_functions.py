@@ -15,7 +15,7 @@ from sklearn.metrics import accuracy_score, confusion_matrix, ConfusionMatrixDis
 
 # Convenience method for computing the size of objects
 def print_size_in_MB(x):
-  print(f"{x.__sizeof__() / 1e6:.5} MB")
+  print(f"Size of {x}: {x.__sizeof__() / 1e6:.5} MB")
 
 # Set up AnnData object with count matrix and label
 def create_adata(h5_path, label_path):
@@ -85,13 +85,15 @@ def create_adata_train(raw_counts_path, norm_counts_path, orig_labels_path):
   raw_counts_ann = sc.read_10x_mtx(raw_counts_path, gex_only = False)
   raw_counts_ann.obs['in_tisch'] = raw_counts_ann.obs.index.isin(adata_norm.obs_names)
   raw_counts_ann.var['in_tisch'] = raw_counts_ann.var.index.isin(adata_norm.var_names)
-  raw_subset = raw_counts_ann[raw_counts_ann.obs['in_tisch'], raw_counts_ann.var['in_tisch']]
+  raw_subset = raw_counts_ann[raw_counts_ann.obs['in_tisch'], raw_counts_ann.var['in_tisch']].copy()
 
   # Ensure shape of both normalized and raw matrices are the same
-  adata_norm = adata_norm[raw_subset.obs_names, raw_subset.var_names]
+  adata_norm = adata_norm[raw_subset.obs_names, raw_subset.var_names].copy()
 
-  # Print number of cells
+  # Print number of cells and dataset size
   print(f'Both datasets have {adata_norm.n_obs} cells and {adata_norm.n_vars} features')
+  print_size_in_MB(adata_norm)
+  print_size_in_MB(raw_subset)
 
   return (raw_subset, adata_norm)
 
@@ -155,7 +157,7 @@ def train_cv(clf, X, y, groups, features, metrics_dict, random_state = 0, k_fold
       - clf: Classifier
       - X: Dataset
       - y: Labels
-      - groups: String indicating group to split on
+      - groups: String indicating group to split on (should be column in adata.obs)
       - features: List of features
       - metrics_dict: Dictionary of metrics to use for scoring
       - random_state: Random state to use for k-folds
@@ -179,7 +181,7 @@ def train_feat_loop(clf, adata, groups, num_feat_list, feat_method_list,
     Inputs:
       - clf: Classifier
       - adata: AnnData object containing count matrix and labels
-      - groups: String indicating group to split on
+      - groups: String indicating group to split on (should be column in adata.obs)
       - num_feat_list: List of numbers of features to use
       - feat_method_list: List of feature selection methods
         - Scanpy highly variable genes: 'seurat_v3', 'seurat', 'cell_ranger', 'pearson_residuals'
@@ -195,26 +197,41 @@ def train_feat_loop(clf, adata, groups, num_feat_list, feat_method_list,
 
   results_df = pd.DataFrame()
 
-  # Loop through all numbers of features
-  for curr_num_feat in num_features:
-    print(f'curr_num_feat: {curr_num_feat}')
-    # Loop through all feature selection methods
-    for curr_method in feat_method_list:
-      print(f'curr_method: {curr_method}')
-      # Select features based on feature selection method
-      if curr_method in ['seurat_v3', 'seurat', 'cell_ranger', 'pearson_residuals']:
-        curr_feat = get_hvgs(adata, curr_method)
-      elif curr_method :
+  # Loop through all feature selection methods
+  for curr_method in feat_method_list:
+    print(f'curr_method: {curr_method}')
+    # Select features based on feature selection method
+    if curr_method in ['seurat_v3', 'seurat', 'cell_ranger', 'pearson_residuals']:
+      feature_order = get_hvgs(adata, curr_method)
+    elif curr_method == 'random_all_genes':
+      rng = np.random.default_rng(random_state)
+      feature_order = rng.choice(adata.var_names, size = adata.n_vars, replace=False)
+    elif curr_method == 'random_per_num':
+      rng = np.random.default_rng(random_state)
+      for curr_num_feat in num_feat_list:
+        feature_order[curr_num_feat] = rng.choice(adata.var_names, size = curr_num_feat, replace=False)
+    else:
+      raise ValueError("String must be one of these values: 'seurat_v3', 'seurat', 'cell_ranger', 'pearson_residuals',\
+                       'random_all_genes', 'random_per_num'")
+
+    # Loop through all numbers of features
+    for curr_num_feat in num_features:
+      print(f'curr_num_feat: {curr_num_feat}')
+    
+      # Extract top features depending on method
+      if curr_method == 'random_per_num':
+        curr_feat = feature_order[curr_num_feat]
       else:
+        curr_feat = feature_order[:curr_num_feat]
 
       # Get cross-validation results and concatenate to dataframe
-      curr_results_hvg = cross_validate(classifier, X[hvg_features[:curr_num_feat]], y, groups = groups, scoring = metrics_dict,
-                 cv = sgkf, return_train_score = True)
-      curr_results_hvg['feature_type'] = 'hvg'
-      curr_results_hvg['num_features'] = curr_num_feat
-      results_df = pd.concat([results_df, pd.DataFrame.from_dict(curr_results_hvg)], ignore_index=True)
+      curr_results = train_cv(clf, adata.X, adata.obs['orig_cancer_label'], adata.obs[groups],
+                              curr_feat, metrics_dict, random_state = random_state, k_fold = k_fold)
+      curr_results['feat_sel_type'] = curr_method
+      curr_results['num_features'] = curr_num_feat
+      results_df = pd.concat([results_df, pd.DataFrame.from_dict(curr_results)], ignore_index=True)
 
-  return
+  return results_df
 
 
 # Training function - train model with set list of features, and score test dataset with same features
