@@ -15,7 +15,7 @@ from sklearn.metrics import accuracy_score, confusion_matrix, ConfusionMatrixDis
 
 # Convenience method for computing the size of objects
 def print_size_in_MB(x):
-  print(f"Size of {x}: {x.__sizeof__() / 1e6:.5} MB")
+  print(f"Size: {x.__sizeof__() / 1e6:.5} MB")
 
 # Set up AnnData object with count matrix and label
 def create_adata(h5_path, label_path):
@@ -92,8 +92,8 @@ def create_adata_train(raw_counts_path, norm_counts_path, orig_labels_path):
 
   # Print number of cells and dataset size
   print(f'Both datasets have {adata_norm.n_obs} cells and {adata_norm.n_vars} features')
-  print_size_in_MB(adata_norm)
-  print_size_in_MB(raw_subset)
+  print(f'Size of raw dataset: {print_size_in_MB(raw_subset)}')
+  print(f'Size of normalized dataset: {print_size_in_MB(adata_norm)}')
 
   return (raw_subset, adata_norm)
 
@@ -131,7 +131,7 @@ def get_hvgs(adata, method):
 
   # Use experimental module if 'pearson_residuals' (with raw counts), otherwise use standard method
   if method == 'pearson_residuals':
-    hvg_df = sc.experimental.pp.highly_variable_genes(adata.layers['raw'], flavor = 'pearson_residuals', n_top_genes = adata.n_vars, inplace = False)
+    hvg_df = sc.experimental.pp.highly_variable_genes(adata, flavor = 'pearson_residuals', n_top_genes = adata.n_vars, inplace = False)
   elif method in ['seurat_v3', 'seurat', 'cell_ranger']:
     hvg_df = sc.pp.highly_variable_genes(adata, flavor = method, n_top_genes = adata.n_vars, inplace = False)
   else:
@@ -146,9 +146,6 @@ def get_hvgs(adata, method):
   print(f'hvg_df.shape: {hvg_df.shape}')
   display(hvg_df.head())
   return hvg_df.index
-
-# Generate different set of random features and store as dictionary - needs to be method?
-
 
 # Training function using cross-validation
 def train_cv(clf, X, y, groups, features, metrics_dict, random_state = 0, k_fold = 5):
