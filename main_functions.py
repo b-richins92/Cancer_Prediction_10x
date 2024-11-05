@@ -128,14 +128,18 @@ def get_hvgs(adata, method):
       - adata: AnnData object containing raw and normalized counts
       - method: String indicating method to use for calculating HVGs ('seurat_v3', 'seurat', 'cell_ranger', 'pearson_residuals')
     Output:
-      - Dataframe with genes sorted by high to low variance/dispersion
+      - Index of genes sorted by high to low variance/dispersion
   """
 
-  # Use experimental module if 'pearson_residuals', otherwise use standard method
+  # Use experimental module if 'pearson_residuals' (with raw counts), otherwise use standard method
   if method == 'pearson_residuals':
-    hvg_df = sc.experimental.pp.highly_variable_genes(adata, flavor = 'pearson_residuals', n_top_genes = adata.n_vars, inplace = False)
-  else:
+    hvg_df = sc.experimental.pp.highly_variable_genes(adata.layers['raw'], flavor = 'pearson_residuals', n_top_genes = adata.n_vars, inplace = False)
+  elif method == 'seurat_v3':
+    hvg_df = sc.pp.highly_variable_genes(adata.layers['raw'], flavor = method, n_top_genes = adata.n_vars, inplace = False)
+  elif method in ['seurat', 'cell_ranger']:
     hvg_df = sc.pp.highly_variable_genes(adata, flavor = method, n_top_genes = adata.n_vars, inplace = False)
+  else:
+    raise ValueError("String must be one of four values: 'seurat_v3', 'seurat', 'cell_ranger', 'pearson_residuals'")
 
   # Sort genes by highest variance/dispersion, depending on method
   if method in ['seurat_v3', 'pearson_residuals']:
@@ -143,25 +147,26 @@ def get_hvgs(adata, method):
   else:
     hvg_df = hvg_df.sort_values(by = 'dispersions_norm', ascending = False)
 
-  return hvg_df
+  print(f'hvg_df.shape: {hvg_df.shape}')
+  display(hvg_df.head())
+  return hvg_df.index
 
 # Generate different set of random features and store as dictionary - needs to be method?
 
 
 # Training function using cross-validation
-def train_cv(clf, X, y, groups, features, metrics_dict, random_state, k_fold = 5):
+def train_cv(clf, X, y, groups, features, metrics_dict, random_state = 0, k_fold = 5):
   """
     Inputs: 
       - clf: Classifier
       - X: Dataset
       - y: Labels
-      - groups: Group to split on
-      - features: Features
+      - groups: String indicating group to split on
+      - features: List of features
       - metrics_dict: Dictionary of metrics to use for scoring
       - random_state: Random state to use for k-folds
       - k_fold = Number of folds to use
-    Output: 
-      - Trained model
+    Output:
       - Dataframe with metrics per fold
   """
 
@@ -173,6 +178,48 @@ def train_cv(clf, X, y, groups, features, metrics_dict, random_state, k_fold = 5
   return pd.DataFrame.from_dict(curr_results)
 
 # Function to loop through training function across features and HVG vs random selection methods
+def train_feat_loop(clf, X, y, groups, num_feat_list, feat_method_list,
+                    metrics_dict, random_state = 0, k_fold = 5):
+  """
+    Run cross-validation with different numbers of features and feature selection methods
+    Inputs:
+      - clf: Classifier
+      - X: Dataset
+      - y: Labels
+      - groups: String indicating group to split on
+      - num_feat_list: List of numbers of features to use
+      - feat_method_list: List of feature selection methods
+        - Scanpy highly variable genes: 'seurat_v3', 'seurat', 'cell_ranger', 'pearson_residuals'
+        - Random selection
+          - 'random_all_genes': Randomize order of all genes, then select top N genes at each number
+          - 'random_per_num': Pick a new set of N random genes for each N
+      - metrics_dict: Dictionary of metrics to use for scoring
+      - random_state: Random state to use for k-folds
+      - k_fold = Number of folds to use
+    Output: 
+      - Concatenated dataframe containing results for all numbers of features and feature selection methods
+  """
+
+  results_df = pd.DataFrame()
+
+  # Loop through all numbers of features
+  for curr_num_feat in num_features:
+    print(f'curr_num_feat: {curr_num_feat}')
+    # Loop through all feature selection methods
+    for curr_method in feat_method_list:
+      print(f'curr_method: {curr_method}')
+      # Select features based on feature selection method
+      if curr_method in ['seurat_v3', 'seurat', 'cell_ranger', 'pearson_residuals']:
+        curr_feat = get_hvgs()
+      # Get cross-validation results and concatenate to dataframe
+      curr_results_hvg = cross_validate(classifier, X[hvg_features[:curr_num_feat]], y, groups = groups, scoring = metrics_dict,
+                 cv = sgkf, return_train_score = True)
+      curr_results_hvg['feature_type'] = 'hvg'
+      curr_results_hvg['num_features'] = curr_num_feat
+      results_df = pd.concat([results_df, pd.DataFrame.from_dict(curr_results_hvg)], ignore_index=True)
+
+  return
+
 
 # Training function - train model with set list of features, and score test dataset with same features
 def train_test_model(clf, train_df, train_labels, test_df, test_labels, features):
