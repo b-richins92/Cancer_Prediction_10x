@@ -90,12 +90,10 @@ def create_adata_train(raw_counts_path, norm_counts_path, orig_labels_path):
   # Ensure shape of both normalized and raw matrices are the same
   adata_norm = adata_norm[raw_subset.obs_names, raw_subset.var_names]
 
-  # Print number of cells and dataset size
-  print(f'Number of cells: {adata.n_obs}')
-  print(f'Number of features: {adata.n_vars}')
-#  print_size_in_MB(adata)
+  # Print number of cells
+  print(f'Both datasets have {adata_norm.n_obs} cells and {adata_norm.n_vars} features')
 
-  return raw_subset, adata_norm
+  return (raw_subset, adata_norm)
 
 # Get differentially expressed genes between cancer and normal cells in datasets
 def get_diff_exp_genes(adata_obj, corr_method = 'bonferroni', pval_cutoff = 0.05, log2fc_min = 0.25):
@@ -132,9 +130,7 @@ def get_hvgs(adata, method):
   # Use experimental module if 'pearson_residuals' (with raw counts), otherwise use standard method
   if method == 'pearson_residuals':
     hvg_df = sc.experimental.pp.highly_variable_genes(adata.layers['raw'], flavor = 'pearson_residuals', n_top_genes = adata.n_vars, inplace = False)
-  elif method == 'seurat_v3':
-    hvg_df = sc.pp.highly_variable_genes(adata.layers['raw'], flavor = method, n_top_genes = adata.n_vars, inplace = False)
-  elif method in ['seurat', 'cell_ranger']:
+  elif method in ['seurat_v3', 'seurat', 'cell_ranger']:
     hvg_df = sc.pp.highly_variable_genes(adata, flavor = method, n_top_genes = adata.n_vars, inplace = False)
   else:
     raise ValueError("String must be one of four values: 'seurat_v3', 'seurat', 'cell_ranger', 'pearson_residuals'")
@@ -176,14 +172,13 @@ def train_cv(clf, X, y, groups, features, metrics_dict, random_state = 0, k_fold
   return pd.DataFrame.from_dict(curr_results)
 
 # Function to loop through training function across features and HVG vs random selection methods
-def train_feat_loop(clf, X, y, groups, num_feat_list, feat_method_list,
+def train_feat_loop(clf, adata, groups, num_feat_list, feat_method_list,
                     metrics_dict, random_state = 0, k_fold = 5):
   """
     Run cross-validation with different numbers of features and feature selection methods
     Inputs:
       - clf: Classifier
-      - X: Dataset
-      - y: Labels
+      - adata: AnnData object containing count matrix and labels
       - groups: String indicating group to split on
       - num_feat_list: List of numbers of features to use
       - feat_method_list: List of feature selection methods
@@ -208,7 +203,10 @@ def train_feat_loop(clf, X, y, groups, num_feat_list, feat_method_list,
       print(f'curr_method: {curr_method}')
       # Select features based on feature selection method
       if curr_method in ['seurat_v3', 'seurat', 'cell_ranger', 'pearson_residuals']:
-        curr_feat = get_hvgs()
+        curr_feat = get_hvgs(adata, curr_method)
+      elif curr_method :
+      else:
+
       # Get cross-validation results and concatenate to dataframe
       curr_results_hvg = cross_validate(classifier, X[hvg_features[:curr_num_feat]], y, groups = groups, scoring = metrics_dict,
                  cv = sgkf, return_train_score = True)
