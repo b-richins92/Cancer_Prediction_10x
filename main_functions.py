@@ -15,7 +15,7 @@ from sklearn.metrics import accuracy_score, confusion_matrix, ConfusionMatrixDis
 
 # Convenience method for computing the size of objects
 def print_size_in_MB(x):
-  print(f"Size: {x.__sizeof__() / 1e6:.5} MB")
+  print(f'Size: {x.__sizeof__() / 1e6:.5} MB')
 
 # Set up AnnData object with count matrix and label
 def create_adata(h5_path, label_path):
@@ -147,8 +147,6 @@ def get_hvgs(adata, method):
 
   return hvg_df.index
 
-# Pearson residual preprocessing
-
 # Training function using cross-validation
 def train_cv(clf, X, y, groups, features, metrics_dict, random_state = 0, k_fold = 5):
   """
@@ -168,7 +166,7 @@ def train_cv(clf, X, y, groups, features, metrics_dict, random_state = 0, k_fold
   # 5-fold cross-validation (stratified, divided by patients) for SVM
   sgkf = StratifiedGroupKFold(n_splits=k_fold, shuffle = True, random_state = random_state)
   curr_results = cross_validate(clf, X[features], y, groups = groups, scoring = metrics_dict,
-                 cv = sgkf.get_n_splits(), return_train_score = True)
+                 cv = sgkf, return_train_score = True)
 
   return pd.DataFrame.from_dict(curr_results)
 
@@ -199,13 +197,11 @@ def train_feat_loop(clf, adata_raw, adata_norm, groups, num_feat_list, feat_meth
 
   # Loop through all feature selection methods
   for curr_method in feat_method_list:
-    print(f'curr_method: {curr_method}')
+#    print(f'curr_method: {curr_method}')
     # Select features based on feature selection method
     if curr_method in ['seurat_v3', 'pearson_residuals']:
-#      adata = adata_raw
       feature_order = get_hvgs(adata_raw, curr_method)
     elif curr_method in ['seurat', 'cell_ranger']:
-#      adata = adata_norm
       feature_order = get_hvgs(adata_norm, curr_method)
     elif curr_method == 'random_all_genes':
       rng = np.random.default_rng(random_state)
@@ -220,7 +216,7 @@ def train_feat_loop(clf, adata_raw, adata_norm, groups, num_feat_list, feat_meth
 
     # Loop through all numbers of features
     for curr_num_feat in num_feat_list:
-      print(f'curr_num_feat: {curr_num_feat}')
+#      print(f'curr_num_feat: {curr_num_feat}')
     
       # Extract top features depending on method
       if curr_method == 'random_per_num':
@@ -229,8 +225,6 @@ def train_feat_loop(clf, adata_raw, adata_norm, groups, num_feat_list, feat_meth
         curr_feat = feature_order[:curr_num_feat]
 
       # Get cross-validation results and concatenate to dataframe
-      print(f'adata_norm.obs['{groups}'].shape: {adata_norm.obs[groups]}')
-      print(f'type: {type(adata_norm.obs[groups])}')
       curr_results = train_cv(clf, adata_norm.to_df(), adata_norm.obs['orig_cancer_label'], adata_norm.obs[groups],
                               curr_feat, metrics_dict, random_state = random_state, k_fold = k_fold)
       curr_results['feat_sel_type'] = curr_method
@@ -272,6 +266,31 @@ def train_test_model(clf, train_df, train_labels, test_df, test_labels, features
   return clf
 
 # Print line plots of metrics
+def make_line_plots_metrics(results_df):
+  """
+    Generate line plots comparing metrics from cross-validation
+    Inputs: 
+      - results_df: Dataframe from train_test_model() with metrics in each column
+    Output:
+      - Return 2 figures of subplots - all test metrics, all training metrics
+  """
+  # Convert dataframe from wide to long
+  results_df_tall = results_df.melt(id_vars=['feat_sel_type', 'num_features'], var_name='metric', value_name='score')
 
+  # Plot 1 figure with all test metrics versus number of features - Facet by metric. Color by feature type
+  results_test = results_df_tall[results_df_tall['metric'].str.contains('test_')]
+  g1 = sns.catplot(
+      data=results_test, x='num_features', y='score', col='metric',
+      hue = 'feat_sel_type', kind='point', col_wrap = 4, capsize = 0.2
+  )
+
+  # Plot 1 figure with all training metrics
+  results_train = results_df_tall[results_df_tall['metric'].str.contains('train_')]
+  g2 = sns.catplot(
+      data=results_train, x='num_features', y='score', col='metric',
+      hue = 'feat_sel_type', kind='point', col_wrap = 4, capsize = 0.2
+  )
+
+  return g1, g2
 
 # Calculate Jaccard coefficient overlap between feature sets
