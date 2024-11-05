@@ -63,10 +63,12 @@ def create_adata_train(raw_counts_path, norm_counts_path, orig_labels_path):
       - raw_counts_path: String with path to folder with mtx files containing raw counts
       - norm_counts_path: String with path to h5 file from TISCH containing normalized counts
       - orig_labels_path: String with path to csv.gz file containing cell type annotations from original paper
-    Output: AnnData object loaded with raw and normalized matrices and cancer cell annotation from original paper
+    Output:
+      - AnnData object with raw matrix and cancer cell annotation from original paper
+      - AnnData object with normalized matrix and cancer cell annotation from original paper
   """
   # Read in normalized count matrix as AnnData object
-  adata = sc.read_10x_h5(norm_counts_path, gex_only = False)
+  adata_norm = sc.read_10x_h5(norm_counts_path, gex_only = False)
 
   # Load in original labels/metadata
   orig_meta = pd.read_csv(orig_labels_path)
@@ -74,30 +76,26 @@ def create_adata_train(raw_counts_path, norm_counts_path, orig_labels_path):
   orig_meta['orig_cancer_label'] = np.where(orig_meta['CellType'] == 'Cancer', 1, 0)
 
   # Merge original metadata with normalized AnnData from TISCH
-  adata.obs = pd.merge(adata.obs, orig_meta['orig_cancer_label'], left_index = True, right_index = True, how = 'inner')
+  adata_norm.obs = pd.merge(adata_norm.obs, orig_meta['orig_cancer_label'], left_index = True, right_index = True, how = 'inner')
  
   # Reorder genes by alphabetical order
-  adata.var = adata.var.sort_index()
+  adata_norm.var = adata_norm.var.sort_index()
 
-  # Load in raw counts as layer - subset using TISCH cells and genes
+  # Load in raw counts into AnnData object - subset using TISCH cells and genes
   raw_counts_ann = sc.read_10x_mtx(raw_counts_path, gex_only = False)
-  raw_counts_ann.obs['in_tisch'] = raw_counts_ann.obs.index.isin(adata.obs_names)
-  raw_counts_ann.var['in_tisch'] = raw_counts_ann.var.index.isin(adata.var_names)
+  raw_counts_ann.obs['in_tisch'] = raw_counts_ann.obs.index.isin(adata_norm.obs_names)
+  raw_counts_ann.var['in_tisch'] = raw_counts_ann.var.index.isin(adata_norm.var_names)
   raw_subset = raw_counts_ann[raw_counts_ann.obs['in_tisch'], raw_counts_ann.var['in_tisch']]
-  raw_subset_x = raw_subset.X.copy()
-  adata = adata[raw_subset.obs_names, raw_subset.var_names]
-  adata.layers['raw'] = raw_subset_x
+
+  # Ensure shape of both normalized and raw matrices are the same
+  adata_norm = adata_norm[raw_subset.obs_names, raw_subset.var_names]
 
   # Print number of cells and dataset size
   print(f'Number of cells: {adata.n_obs}')
   print(f'Number of features: {adata.n_vars}')
 #  print_size_in_MB(adata)
 
-  # Delete unused objects
-  del(raw_counts_ann)
-  del(raw_subset)
-
-  return adata
+  return raw_subset, adata_norm
 
 # Get differentially expressed genes between cancer and normal cells in datasets
 def get_diff_exp_genes(adata_obj, corr_method = 'bonferroni', pval_cutoff = 0.05, log2fc_min = 0.25):
