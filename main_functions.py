@@ -76,7 +76,8 @@ def create_adata_train(raw_counts_path, norm_counts_path, orig_labels_path):
   orig_meta['orig_cancer_label'] = np.where(orig_meta['CellType'] == 'Cancer', 1, 0)
 
   # Merge original metadata with normalized AnnData from TISCH
-  adata_norm.obs = pd.merge(adata_norm.obs, orig_meta['orig_cancer_label'], left_index = True, right_index = True, how = 'inner')
+  adata_norm.obs = pd.merge(adata_norm.obs, orig_meta, left_index = True, right_index = True, how = 'inner')
+  display(adata_norm.obs.head())
  
   # Reorder genes by alphabetical order
   adata_norm.var = adata_norm.var.sort_index()
@@ -229,7 +230,7 @@ def train_feat_loop(clf, adata_raw, adata_norm, groups, num_feat_list, feat_meth
         curr_feat = feature_order[:curr_num_feat]
 
       # Get cross-validation results and concatenate to dataframe
-      curr_results = train_cv(clf, adata_norm.X, adata_norm.obs['orig_cancer_label'], adata_norm.obs[groups],
+      curr_results = train_cv(clf, adata_norm.to_df(), adata_norm.obs['orig_cancer_label'], adata_norm.obs[groups],
                               curr_feat, metrics_dict, random_state = random_state, k_fold = k_fold)
       curr_results['feat_sel_type'] = curr_method
       curr_results['num_features'] = curr_num_feat
