@@ -225,7 +225,17 @@ def train_feat_loop(clf, adata_raw, adata_norm, groups, num_feat_list, feat_meth
         curr_feat = feature_order[:curr_num_feat]
 
       # Get cross-validation results and concatenate to dataframe
-      curr_results = train_cv(clf, adata_norm.to_df(), adata_norm.obs['orig_cancer_label'], adata_norm.obs[groups],
+        # Apply normalization for Pearson residuals first
+      if curr_method == 'pearson_residuals':
+        # Subset to top N genes
+        adata_pearson = adata_raw[:, curr_feat]
+        # Compute and normalize to Pearson residuals
+        sc.experimental.pp.normalize_pearson_residuals(adata_pearson)
+        
+        curr_results = train_cv(clf, adata_pearson.to_df(), adata_pearson.obs['orig_cancer_label'], adata_pearson.obs[groups],
+                              curr_feat, metrics_dict, random_state = random_state, k_fold = k_fold)
+      else:
+        curr_results = train_cv(clf, adata_norm.to_df(), adata_norm.obs['orig_cancer_label'], adata_norm.obs[groups],
                               curr_feat, metrics_dict, random_state = random_state, k_fold = k_fold)
       curr_results['feat_sel_type'] = curr_method
       curr_results['num_features'] = curr_num_feat
