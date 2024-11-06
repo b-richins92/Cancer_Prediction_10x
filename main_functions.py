@@ -87,6 +87,9 @@ def create_adata_train(raw_counts_path, norm_counts_path, orig_labels_path):
   raw_counts_ann.var['in_tisch'] = raw_counts_ann.var.index.isin(adata_norm.var_names)
   raw_subset = raw_counts_ann[raw_counts_ann.obs['in_tisch'], raw_counts_ann.var['in_tisch']].copy()
 
+  # Add in labels to raw_subset
+  raw_subset.obs = pd.merge(raw_subset.obs, orig_meta, left_index = True, right_index = True, how = 'inner')
+
   # Ensure shape of both normalized and raw matrices are the same
   adata_norm = adata_norm[raw_subset.obs_names, raw_subset.var_names].copy()
 
@@ -197,7 +200,7 @@ def train_feat_loop(clf, adata_raw, adata_norm, groups, num_feat_list, feat_meth
 
   # Loop through all feature selection methods
   for curr_method in feat_method_list:
-#    print(f'curr_method: {curr_method}')
+    print(f'curr_method: {curr_method}')
     # Select features based on feature selection method
     if curr_method in ['seurat_v3', 'pearson_residuals']:
       feature_order = get_hvgs(adata_raw, curr_method)
@@ -216,7 +219,7 @@ def train_feat_loop(clf, adata_raw, adata_norm, groups, num_feat_list, feat_meth
 
     # Loop through all numbers of features
     for curr_num_feat in num_feat_list:
-#      print(f'curr_num_feat: {curr_num_feat}')
+      print(f'curr_num_feat: {curr_num_feat}')
     
       # Extract top features depending on method
       if curr_method == 'random_per_num':
