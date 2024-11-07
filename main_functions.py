@@ -246,7 +246,7 @@ def train_feat_loop_cv(clf, adata, groups_label, num_feat_list, feat_method_list
   results_df = pd.DataFrame()
 
   # Set up X and y
-  X = adata.X
+  X = adata.copy()
   y = adata.obs['orig_cancer_label']
   groups_col = adata.obs[groups_label]
 
@@ -255,7 +255,7 @@ def train_feat_loop_cv(clf, adata, groups_label, num_feat_list, feat_method_list
   # Loop through each fold
   for i, (train_index, test_index) in enumerate(sgkf.split(X, y, groups_col)):
     X_train, X_test = X[train_index], X[test_index]
-    y_train, y_test = y[train_index], y[test_index]
+    y_train, y_test = y.iloc[train_index], y.iloc[test_index]
 
     # Loop through all feature selection methods
     for curr_method in feat_method_list:
@@ -291,7 +291,7 @@ def train_feat_loop_cv(clf, adata, groups_label, num_feat_list, feat_method_list
           # Subset to top N genes
           curr_X_train = X_train[:, curr_feat]
           # Compute and normalize to Pearson residuals
-          curr_X_train = sc.experimental.pp.normalize_pearson_residuals(adata_pearson, inplace = False)
+          sc.experimental.pp.normalize_pearson_residuals(curr_X_train)
         else:
           curr_X_train = X_train.copy()
 
