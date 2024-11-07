@@ -48,8 +48,6 @@ def create_adata_train(raw_counts_path, norm_counts_path, orig_labels_path):
   # Add in labels to raw_subset
   raw_subset.obs = pd.merge(raw_subset.obs, orig_meta, left_index = True, right_index = True, how = 'inner')
 
-  # Add normalized layer to raw_subset
-
   # Ensure shape of both normalized and raw matrices are the same
   adata_norm = adata_norm[raw_subset.obs_names, raw_subset.var_names].copy()
 
@@ -104,16 +102,18 @@ def get_hvgs(adata, method):
       - Index of genes sorted by high to low variance/dispersion
   """
 
+  num_genes = adata.n_vars
+
   # Use experimental module if 'pearson_residuals' (with raw counts), otherwise use standard method
   if method == 'pearson_residuals':
-    hvg_df = sc.experimental.pp.highly_variable_genes(adata, flavor = 'pearson_residuals', n_top_genes = adata.n_vars,
+    hvg_df = sc.experimental.pp.highly_variable_genes(adata, flavor = 'pearson_residuals', n_top_genes = num_genes,
                                                       layer = 'raw', inplace = False)
   # elif method in ['seurat_v3', 'seurat', 'cell_ranger']:
   #   hvg_df = sc.pp.highly_variable_genes(adata, flavor = method, n_top_genes = adata.n_vars, inplace = False)
   elif method == 'seurat_v3':
-    hvg_df = sc.pp.highly_variable_genes(adata, flavor = method, n_top_genes = adata.n_vars, layer = 'raw', inplace = False)
+    hvg_df = sc.pp.highly_variable_genes(adata, flavor = method, n_top_genes = num_genes, layer = 'raw', inplace = False)
   elif method in ['seurat', 'cell_ranger']:
-    hvg_df = sc.pp.highly_variable_genes(adata, flavor = method, n_top_genes = adata.n_vars, layer = 'norm', inplace = False)
+    hvg_df = sc.pp.highly_variable_genes(adata, flavor = method, n_top_genes = num_genes, layer = 'norm', inplace = False)
   else:
     raise ValueError("String must be one of four values: 'seurat_v3', 'seurat', 'cell_ranger', 'pearson_residuals'")
 
