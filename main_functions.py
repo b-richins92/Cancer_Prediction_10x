@@ -54,10 +54,7 @@ def create_adata_train(raw_counts_path, norm_counts_path, orig_labels_path):
   adata_norm = adata_norm[raw_subset.obs_names, raw_subset.var_names].copy()
 
   # Reorder genes by alphabetical order
-  adata_norm.var = adata_norm.var.sort_index()
-  # Add annotation to indicate transformation for adata_norm
-
-  # Confirm both matrices have equivalent counts
+#  adata_norm.var = adata_norm.var.sort_index()
 
   # Print number of cells and dataset size
   print(f'Dataset has {raw_subset.n_obs} cells and {raw_subset.n_vars} features')
@@ -66,7 +63,13 @@ def create_adata_train(raw_counts_path, norm_counts_path, orig_labels_path):
   print(f'Size of normalized dataset:')
   print_size_in_MB(adata_norm)
 
-  return (raw_subset, adata_norm)
+  # Create a single anndata object that contains both raw and normalized layers
+  adata_all = adata_norm.copy()
+  adata_all.layers['norm'] = adata_norm.X.copy()
+  adata_all.layers['raw'] = raw_subset.X.copy()
+
+# return (raw_subset, adata_norm)
+  return adata_all
 
 
 # Get differentially expressed genes between cancer and normal cells in datasets
