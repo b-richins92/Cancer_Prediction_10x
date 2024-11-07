@@ -17,44 +17,6 @@ from sklearn.metrics import accuracy_score, confusion_matrix, ConfusionMatrixDis
 def print_size_in_MB(x):
   print(f'Size: {x.__sizeof__() / 1e6:.5} MB')
 
-# Set up AnnData object with count matrix and label
-def create_adata(h5_path, label_path):
-  """
-    Inputs:
-      - h5_path: String with path to h5 file containing normalized counts
-      - label_path: String with path to tsv file containing cell type annotations
-    Output: AnnData object loaded with count matrix and cell type labels
-  """
-  # Read in count matrix as AnnData object
-  adata = sc.read_10x_h5(h5_path, gex_only = False)
-
-  # Read in annotation file and add labels to AnnData object
-  annot_df = pd.read_csv(label_path, sep='\t', index_col = 'Cell')
-  annot_df['cancer_label'] = np.where(annot_df['Celltype (malignancy)'] == 'Malignant cells', 1, 0)
-#  annot_df['cancer_label'] = annot_df['cancer_label'].astype('category')
-  adata.obs['cancer_label'] = annot_df['cancer_label']
-
-  # Also add metadata to AnnData object
-  adata.obs['cell_type_malignancy'] = annot_df['Celltype (malignancy)']
-  adata.obs['cell_type_major'] = annot_df['Celltype (major-lineage)']
-  adata.obs['cell_type_minor'] = annot_df['Celltype (minor-lineage)']
-  adata.obs['Patient'] = annot_df['Patient']
-  adata.obs['Sample'] = annot_df['Sample']
-#  adata.obs['Tissue'] = annot_df['Tissue']
-
-  # Add patient ID column using delimiter before cell ID (string of letters or numbers)
-  adata.obs['patient_id'] = adata.obs.index.str.split(r'@|_').str[0]
-
-  # Reorder genes by alphabetical order
-  adata.var = adata.var.sort_index()
-
-  # Print number of cells and dataset size
-  print(f'Number of cells: {adata.n_obs}')
-  print(f'Number of features: {adata.n_vars}')
-  print_size_in_MB(adata)
-
-  return adata
-
 # Set up AnnData object for training dataset
 def create_adata_train(raw_counts_path, norm_counts_path, orig_labels_path):
   """
