@@ -106,9 +106,14 @@ def get_hvgs(adata, method):
 
   # Use experimental module if 'pearson_residuals' (with raw counts), otherwise use standard method
   if method == 'pearson_residuals':
-    hvg_df = sc.experimental.pp.highly_variable_genes(adata, flavor = 'pearson_residuals', n_top_genes = adata.n_vars, inplace = False)
-  elif method in ['seurat_v3', 'seurat', 'cell_ranger']:
-    hvg_df = sc.pp.highly_variable_genes(adata, flavor = method, n_top_genes = adata.n_vars, inplace = False)
+    hvg_df = sc.experimental.pp.highly_variable_genes(adata, flavor = 'pearson_residuals', n_top_genes = adata.n_vars,
+                                                      layer = 'raw', inplace = False)
+  # elif method in ['seurat_v3', 'seurat', 'cell_ranger']:
+  #   hvg_df = sc.pp.highly_variable_genes(adata, flavor = method, n_top_genes = adata.n_vars, inplace = False)
+  elif method == 'seurat_v3':
+    hvg_df = sc.pp.highly_variable_genes(adata, flavor = method, n_top_genes = adata.n_vars, layer = 'raw', inplace = False)
+  elif method in ['seurat', 'cell_ranger']:
+    hvg_df = sc.pp.highly_variable_genes(adata, flavor = method, n_top_genes = adata.n_vars, layer = 'norm', inplace = False)
   else:
     raise ValueError("String must be one of four values: 'seurat_v3', 'seurat', 'cell_ranger', 'pearson_residuals'")
 
@@ -216,6 +221,104 @@ def train_feat_loop(clf, adata_raw, adata_norm, groups, num_feat_list, feat_meth
 
   return results_df
 
+# V2 Function to loop through training function across features and HVG vs random selection methods
+# Applies cross validation split before feature selection
+def train_feat_loop_cv(clf, adata, groups_label, num_feat_list, feat_method_list,
+                       random_state = 0, k_fold = 5):
+  """
+    Run cross-validation with different numbers of features and feature selection methods
+    Inputs:
+      - clf: Classifier
+      - adata: AnnData object containing raw and normalized count matrix and labels
+      - groups_label: String indicating group to split on (should be column in adata.obs)
+      - num_feat_list: List of numbers of features to use
+      - feat_method_list: List of feature selection methods
+        - Scanpy highly variable genes: 'seurat_v3', 'seurat', 'cell_ranger', 'pearson_residuals'
+        - Random selection
+          - 'random_all_genes': Randomize order of all genes, then select top N genes at each number
+          - 'random_per_num': Pick a new set of N random genes for each N
+      - random_state: Random state to use for k-folds
+      - k_fold = Number of folds to use
+    Output: 
+      - Concatenated dataframe containing results for all numbers of features and feature selection methods
+  """
+
+  results_df = pd.DataFrame()
+
+  # Set up X and y
+  X = adata.X
+  y = adata.obs['orig_cancer_label']
+  groups_col = adata.obs[groups_label]
+
+  # Generate cross-validation splits using StratifiedGroupKFold
+  sgkf = StratifiedGroupKFold(n_splits=k_fold, shuffle = True, random_state = random_state)
+  # Loop through each fold
+  for i, (train_index, test_index) in enumerate(sgkf.split(X, y, groups_col)):
+    X_train, X_test = X[train_index], X[test_index]
+    y_train, y_test = y[train_index], y[test_index]
+
+    # Loop through all feature selection methods
+    for curr_method in feat_method_list:
+      print(f'curr_method: {curr_method}')
+      # Select features based on feature selection method
+      if curr_method in ['seurat_v3', 'pearson_residuals', 'seurat', 'cell_ranger']:
+        feature_order = get_hvgs(X_train, curr_method)
+      # elif curr_method in ['seurat', 'cell_ranger']:
+      #   feature_order = get_hvgs(adata_norm, curr_method)
+      elif curr_method == 'random_all_genes':
+        rng = np.random.default_rng(random_state)
+        feature_order = rng.choice(adata.var_names, size = adata.n_vars, replace=False)
+      elif curr_method == 'random_per_num':
+        rng = np.random.default_rng(random_state)
+        for curr_num_feat in num_feat_list:
+          feature_order[curr_num_feat] = rng.choice(adata.var_names, size = curr_num_feat, replace=False)
+      else:
+        raise ValueError("String must be one of these values: 'seurat_v3', 'seurat', 'cell_ranger', 'pearson_residuals',\
+                        'random_all_genes', 'random_per_num'")
+
+      # Loop through all numbers of features
+      for curr_num_feat in num_feat_list:
+        print(f'curr_num_feat: {curr_num_feat}')
+      
+        # Extract top features depending on method
+        if curr_method == 'random_per_num':
+          curr_feat = feature_order[curr_num_feat]
+        else:
+          curr_feat = feature_order[:curr_num_feat]
+
+        # Apply normalization for Pearson residuals to training data
+        if curr_method == 'pearson_residuals':
+          # Subset to top N genes
+          curr_X_train = X_train[:, curr_feat]
+          # Compute and normalize to Pearson residuals
+          curr_X_train = sc.experimental.pp.normalize_pearson_residuals(adata_pearson, inplace = False)
+        else:
+          curr_X_train = X_train.copy()
+
+        # Train model
+        clf.fit(curr_X_train[curr_feat], y_train)
+        # Get predictions
+        y_pred = clf.predict(X_test)
+
+        # Calculate metrics and store in dictionary
+        curr_results = {}
+
+        curr_results['f1'] = f1_score(y_test, y_pred)
+        curr_results['accuracy'] = accuracy_score(y_test, y_pred)
+        curr_results['balanced_accuracy'] = balanced_accuracy_score(y_test, y_pred)
+        curr_results['recall'] = recall_score(y_test, y_pred)
+        curr_results['precision'] = precision_score(y_test, y_pred)
+        curr_results['average_precision'] = average_precision_score(y_test, y_pred)
+        curr_results['roc_auc'] = roc_auc_score(y_test, y_pred)
+        curr_results['matthews_corrcoef'] = matthews_corrcoef(y_test, y_pred)
+        
+        curr_results['fold'] = i
+        curr_results['feat_sel_type'] = curr_method
+        curr_results['num_features'] = curr_num_feat
+        results_df = pd.concat([results_df, pd.DataFrame.from_dict(curr_results)], ignore_index=True)
+
+  return results_df
+
 
 # Training function - train model with set list of features, and score test dataset with same features
 def train_test_model(clf, train_df, train_labels, test_df, test_labels, features):
@@ -259,6 +362,8 @@ def make_line_plots_metrics(results_df):
   """
   # Convert dataframe from wide to long
   results_df_tall = results_df.melt(id_vars=['feat_sel_type', 'num_features'], var_name='metric', value_name='score')
+
+  # Save dataframe summarizing mean and stdev
 
   # Plot 1 figure with all test metrics versus number of features - Facet by metric. Color by feature type
   results_test = results_df_tall[results_df_tall['metric'].str.contains('test_')]
