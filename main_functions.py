@@ -185,13 +185,13 @@ def train_feat_loop_cv(clf, adata, groups_label, num_feat_list, feat_method_list
           curr_feat = feature_order[:curr_num_feat]
 
         # Apply normalization for Pearson residuals to training data
-        if curr_method == 'pearson_residuals':
-          # Subset to top N genes
-          curr_X_train = X_train[:, curr_feat]
-          # Compute and normalize to Pearson residuals
-          sc.experimental.pp.normalize_pearson_residuals(curr_X_train)
-        else:
-          curr_X_train = X_train.copy()
+        # if curr_method == 'pearson_residuals':
+        #   # Subset to top N genes
+        #   curr_X_train = X_train[:, curr_feat]
+        #   # Compute and normalize to Pearson residuals
+        #   sc.experimental.pp.normalize_pearson_residuals(curr_X_train)
+        # else:
+        curr_X_train = X_train.copy()
 
         # Train model
         clf.fit(curr_X_train[curr_feat], y_train)
@@ -262,6 +262,11 @@ def make_line_plots_metrics(results_df):
   results_df_tall = results_df.melt(id_vars=['feat_sel_type', 'num_features'], var_name='metric', value_name='score')
 
   # Save dataframe summarizing mean and stdev
+  results_df_grp = results_df_tall.groupby(['feat_sel_type', 'num_features', 'metric'].agg(['mean', 'stdev']))
+  print(results_df_grp.head())
+  results_df_grp_wide = pd.pivot_table(results_df_grp, values = ['f1':'matthews_corrcoef'], columns = ['feat_sel_type', 'num_features', 'metric'])
+  print(results_df_grp_wide.head())
+  results_df_grp_wide.to_csv('results_df_grp_wide.csv')
 
   # Plot 1 figure with all test metrics versus number of features - Facet by metric. Color by feature type
   g1 = sns.catplot(
