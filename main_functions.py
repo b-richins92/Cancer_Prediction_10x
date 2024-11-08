@@ -26,7 +26,7 @@ def create_adata_train(raw_counts_path, norm_counts_path, orig_labels_path):
       - norm_counts_path: String with path to h5 file from TISCH containing normalized counts
       - orig_labels_path: String with path to csv.gz file containing cell type annotations from original paper
     Output:
-      - 2 AnnData objects with raw and normalized matrices with cancer cell annotation from original paper
+      - AnnData object with raw and normalized matrices with cancer cell annotation from original paper
   """
   # Read in normalized count matrix as AnnData object
   adata_norm = sc.read_10x_h5(norm_counts_path, gex_only = False)
@@ -50,9 +50,6 @@ def create_adata_train(raw_counts_path, norm_counts_path, orig_labels_path):
 
   # Ensure shape of both normalized and raw matrices are the same
   adata_norm = adata_norm[raw_subset.obs_names, raw_subset.var_names].copy()
-
-  # Reorder genes by alphabetical order
-#  adata_norm.var = adata_norm.var.sort_index()
 
   # Print number of cells and dataset size
   print(f'Dataset has {raw_subset.n_obs} cells and {raw_subset.n_vars} features')
@@ -108,8 +105,6 @@ def get_hvgs(adata, method):
   if method == 'pearson_residuals':
     hvg_df = sc.experimental.pp.highly_variable_genes(adata, flavor = 'pearson_residuals', n_top_genes = num_genes,
                                                       layer = 'raw', inplace = False)
-  # elif method in ['seurat_v3', 'seurat', 'cell_ranger']:
-  #   hvg_df = sc.pp.highly_variable_genes(adata, flavor = method, n_top_genes = adata.n_vars, inplace = False)
   elif method == 'seurat_v3':
     hvg_df = sc.pp.highly_variable_genes(adata, flavor = method, n_top_genes = num_genes, layer = 'raw', inplace = False)
   elif method in ['seurat', 'cell_ranger']:
@@ -125,103 +120,7 @@ def get_hvgs(adata, method):
 
   return hvg_df.index
 
-# Training function using cross-validation
-def train_cv(clf, X, y, groups, features, metrics_dict, random_state = 0, k_fold = 5):
-  """
-    Inputs: 
-      - clf: Classifier
-      - X: Dataset
-      - y: Labels
-      - groups: Column indicating group to split on
-      - features: List of features
-      - metrics_dict: Dictionary of metrics to use for scoring
-      - random_state: Random state to use for k-folds
-      - k_fold = Number of folds to use
-    Output:
-      - Dataframe with metrics per fold
-  """
-
-  # 5-fold cross-validation (stratified, divided by patients) for SVM
-  sgkf = StratifiedGroupKFold(n_splits=k_fold, shuffle = True, random_state = random_state)
-  curr_results = cross_validate(clf, X[features], y, groups = groups, scoring = metrics_dict,
-                 cv = sgkf, return_train_score = True)
-
-  return pd.DataFrame.from_dict(curr_results)
-
 # Function to loop through training function across features and HVG vs random selection methods
-def train_feat_loop(clf, adata_raw, adata_norm, groups, num_feat_list, feat_method_list,
-                    metrics_dict, random_state = 0, k_fold = 5):
-  """
-    Run cross-validation with different numbers of features and feature selection methods
-    Inputs:
-      - clf: Classifier
-      - adata_raw: AnnData object containing raw count matrix and labels
-      - adata_norm: AnnData object containing normalized count matrix and labels
-      - groups: String indicating group to split on (should be column in adata.obs)
-      - num_feat_list: List of numbers of features to use
-      - feat_method_list: List of feature selection methods
-        - Scanpy highly variable genes: 'seurat_v3', 'seurat', 'cell_ranger', 'pearson_residuals'
-        - Random selection
-          - 'random_all_genes': Randomize order of all genes, then select top N genes at each number
-          - 'random_per_num': Pick a new set of N random genes for each N
-      - metrics_dict: Dictionary of metrics to use for scoring
-      - random_state: Random state to use for k-folds
-      - k_fold = Number of folds to use
-    Output: 
-      - Concatenated dataframe containing results for all numbers of features and feature selection methods
-  """
-
-  results_df = pd.DataFrame()
-
-  # Loop through all feature selection methods
-  for curr_method in feat_method_list:
-    print(f'curr_method: {curr_method}')
-    # Select features based on feature selection method
-    if curr_method in ['seurat_v3', 'pearson_residuals']:
-      feature_order = get_hvgs(adata_raw, curr_method)
-    elif curr_method in ['seurat', 'cell_ranger']:
-      feature_order = get_hvgs(adata_norm, curr_method)
-    elif curr_method == 'random_all_genes':
-      rng = np.random.default_rng(random_state)
-      feature_order = rng.choice(adata_norm.var_names, size = adata_norm.n_vars, replace=False)
-    elif curr_method == 'random_per_num':
-      rng = np.random.default_rng(random_state)
-      for curr_num_feat in num_feat_list:
-        feature_order[curr_num_feat] = rng.choice(adata_norm.var_names, size = curr_num_feat, replace=False)
-    else:
-      raise ValueError("String must be one of these values: 'seurat_v3', 'seurat', 'cell_ranger', 'pearson_residuals',\
-                       'random_all_genes', 'random_per_num'")
-
-    # Loop through all numbers of features
-    for curr_num_feat in num_feat_list:
-      print(f'curr_num_feat: {curr_num_feat}')
-    
-      # Extract top features depending on method
-      if curr_method == 'random_per_num':
-        curr_feat = feature_order[curr_num_feat]
-      else:
-        curr_feat = feature_order[:curr_num_feat]
-
-      # Get cross-validation results and concatenate to dataframe
-        # Apply normalization for Pearson residuals first
-      if curr_method == 'pearson_residuals':
-        # Subset to top N genes
-        adata_pearson = adata_raw[:, curr_feat]
-        # Compute and normalize to Pearson residuals
-        sc.experimental.pp.normalize_pearson_residuals(adata_pearson)
-        
-        curr_results = train_cv(clf, adata_pearson.to_df(), adata_pearson.obs['orig_cancer_label'], adata_pearson.obs[groups],
-                              curr_feat, metrics_dict, random_state = random_state, k_fold = k_fold)
-      else:
-        curr_results = train_cv(clf, adata_norm.to_df(), adata_norm.obs['orig_cancer_label'], adata_norm.obs[groups],
-                              curr_feat, metrics_dict, random_state = random_state, k_fold = k_fold)
-      curr_results['feat_sel_type'] = curr_method
-      curr_results['num_features'] = curr_num_feat
-      results_df = pd.concat([results_df, pd.DataFrame.from_dict(curr_results)], ignore_index=True)
-
-  return results_df
-
-# V2 Function to loop through training function across features and HVG vs random selection methods
 # Applies cross validation split before feature selection
 def train_feat_loop_cv(clf, adata, groups_label, num_feat_list, feat_method_list,
                        random_state = 0, k_fold = 5):
@@ -263,13 +162,12 @@ def train_feat_loop_cv(clf, adata, groups_label, num_feat_list, feat_method_list
       # Select features based on feature selection method
       if curr_method in ['seurat_v3', 'pearson_residuals', 'seurat', 'cell_ranger']:
         feature_order = get_hvgs(X_train, curr_method)
-      # elif curr_method in ['seurat', 'cell_ranger']:
-      #   feature_order = get_hvgs(adata_norm, curr_method)
       elif curr_method == 'random_all_genes':
         rng = np.random.default_rng(random_state)
         feature_order = rng.choice(adata.var_names, size = adata.n_vars, replace=False)
       elif curr_method == 'random_per_num':
         rng = np.random.default_rng(random_state)
+        feature_order = {}
         for curr_num_feat in num_feat_list:
           feature_order[curr_num_feat] = rng.choice(adata.var_names, size = curr_num_feat, replace=False)
       else:
@@ -303,18 +201,18 @@ def train_feat_loop_cv(clf, adata, groups_label, num_feat_list, feat_method_list
         # Calculate metrics and store in dictionary
         curr_results = {}
 
-        curr_results['f1'] = f1_score(y_test, y_pred)
-        curr_results['accuracy'] = accuracy_score(y_test, y_pred)
-        curr_results['balanced_accuracy'] = balanced_accuracy_score(y_test, y_pred)
-        curr_results['recall'] = recall_score(y_test, y_pred)
-        curr_results['precision'] = precision_score(y_test, y_pred)
-        curr_results['average_precision'] = average_precision_score(y_test, y_pred)
-        curr_results['roc_auc'] = roc_auc_score(y_test, y_pred)
-        curr_results['matthews_corrcoef'] = matthews_corrcoef(y_test, y_pred)
+        curr_results['f1'] = [f1_score(y_test, y_pred)]
+        curr_results['accuracy'] = [accuracy_score(y_test, y_pred)]
+        curr_results['balanced_accuracy'] = [balanced_accuracy_score(y_test, y_pred)]
+        curr_results['recall'] = [recall_score(y_test, y_pred)]
+        curr_results['precision'] = [precision_score(y_test, y_pred)]
+        curr_results['average_precision'] = [average_precision_score(y_test, y_pred)]
+        curr_results['roc_auc'] = [roc_auc_score(y_test, y_pred)]
+        curr_results['matthews_corrcoef'] = [matthews_corrcoef(y_test, y_pred)]
         
-        curr_results['fold'] = i
-        curr_results['feat_sel_type'] = curr_method
-        curr_results['num_features'] = curr_num_feat
+        curr_results['fold'] = [i]
+        curr_results['feat_sel_type'] = [curr_method]
+        curr_results['num_features'] = [curr_num_feat]
         results_df = pd.concat([results_df, pd.DataFrame.from_dict(curr_results)], ignore_index=True)
 
   return results_df
@@ -358,7 +256,7 @@ def make_line_plots_metrics(results_df):
     Inputs: 
       - results_df: Dataframe from train_test_model() with metrics in each column
     Output:
-      - Return 2 figures of subplots - all test metrics, all training metrics
+      - Return 1 figure with faceted subplots by metric
   """
   # Convert dataframe from wide to long
   results_df_tall = results_df.melt(id_vars=['feat_sel_type', 'num_features'], var_name='metric', value_name='score')
@@ -366,21 +264,13 @@ def make_line_plots_metrics(results_df):
   # Save dataframe summarizing mean and stdev
 
   # Plot 1 figure with all test metrics versus number of features - Facet by metric. Color by feature type
-  results_test = results_df_tall[results_df_tall['metric'].str.contains('test_')]
   g1 = sns.catplot(
-      data=results_test, x='num_features', y='score', col='metric',
+      data=results_df_tall,
+      x='num_features', y='score', col='metric',
       hue = 'feat_sel_type', col_wrap = 4, kind='point', capsize = 0.2,
       sharex = False, alpha = 0.7
   )
 
-  # Plot 1 figure with all training metrics
-  results_train = results_df_tall[results_df_tall['metric'].str.contains('train_')]
-  g2 = sns.catplot(
-      data=results_train, x='num_features', y='score', col='metric',
-      hue = 'feat_sel_type', col_wrap = 4, kind='point', capsize = 0.2,
-      sharex = False, alpha = 0.7
-  )
-
-  return g1, g2
+  return g1
 
 # Calculate Jaccard coefficient overlap between feature sets
