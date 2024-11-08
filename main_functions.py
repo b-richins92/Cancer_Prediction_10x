@@ -262,11 +262,12 @@ def make_line_plots_metrics(results_df):
   results_df_tall = results_df.melt(id_vars=['feat_sel_type', 'num_features'], var_name='metric', value_name='score')
 
   # Save dataframe summarizing mean and stdev
-  results_df_grp = results_df_tall.groupby(['feat_sel_type', 'num_features', 'metric'].agg(['mean', 'stdev']))
-  print(results_df_grp.head())
-  results_df_grp_wide = pd.pivot_table(results_df_grp, values = ['f1':'matthews_corrcoef'], columns = ['feat_sel_type', 'num_features', 'metric'])
-  print(results_df_grp_wide.head())
-  results_df_grp_wide.to_csv('results_df_grp_wide.csv')
+  results_df_pivot = pd.pivot_table(results_df_tall,
+                                    values=['score'],
+                                    index = ['feat_sel_type', 'num_features'],
+                                    columns = ['metric'],
+                                    aggfunc=['mean', 'std'])
+  results_df_pivot.to_csv('results_df_pivot.csv')
 
   # Plot 1 figure with all test metrics versus number of features - Facet by metric. Color by feature type
   g1 = sns.catplot(
