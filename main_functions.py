@@ -194,9 +194,9 @@ def train_feat_loop_cv(clf, adata, groups_label, num_feat_list, feat_method_list
         curr_X_train = X_train.copy()
 
         # Train model
-        clf.fit(curr_X_train[curr_feat], y_train)
+        clf.fit(curr_X_train[:, curr_feat].X, y_train)
         # Get predictions
-        y_pred = clf.predict(X_test)
+        y_pred = clf.predict(X_test[:, curr_feat].X)
 
         # Calculate metrics and store in dictionary
         curr_results = {}
