@@ -259,7 +259,8 @@ def make_line_plots_metrics(results_df):
       - Return 1 figure with faceted subplots by metric
   """
   # Convert dataframe from wide to long
-  results_df_tall = results_df.melt(id_vars=['feat_sel_type', 'num_features'], var_name='metric', value_name='score')
+  results_df_tall = results_df.melt(id_vars=['feat_sel_type', 'num_features', 'fold'], var_name='metric', value_name='score')
+  display(results_df_tall.head())
 
   # Save dataframe summarizing mean and stdev
   results_df_pivot = pd.pivot_table(results_df_tall,
@@ -267,7 +268,7 @@ def make_line_plots_metrics(results_df):
                                     index = ['feat_sel_type', 'num_features'],
                                     columns = ['metric'],
                                     aggfunc=['mean', 'std'])
-  results_df_pivot.to_csv('results_df_pivot.csv')
+#  results_df_pivot.to_csv('results_df_pivot.csv')
 
   # Plot 1 figure with all test metrics versus number of features - Facet by metric. Color by feature type
   g1 = sns.catplot(
