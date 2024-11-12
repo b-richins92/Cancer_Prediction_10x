@@ -142,6 +142,8 @@ def train_feat_loop_cv(clf, adata, groups_label, num_feat_list, feat_method_list
   """
 
   results_df = pd.DataFrame()
+  test_indices_dict = {}
+  feat_order_dict = {}
 
   # Set up X and y
   X = adata.copy()
@@ -154,6 +156,9 @@ def train_feat_loop_cv(clf, adata, groups_label, num_feat_list, feat_method_list
   for i, (train_index, test_index) in enumerate(sgkf.split(X, y, groups_col)):
     X_train, X_test = X[train_index], X[test_index]
     y_train, y_test = y.iloc[train_index], y.iloc[test_index]
+
+    # Store test indices in a dictionary by fold
+    test_indices_dict[i] = test_index
 
     # Loop through all feature selection methods
     for curr_method in feat_method_list:
@@ -170,9 +175,17 @@ def train_feat_loop_cv(clf, adata, groups_label, num_feat_list, feat_method_list
         for curr_num_feat in num_feat_list:
           feature_order[curr_num_feat] = rng.choice(adata.var_names, size = curr_num_feat, replace=False)
       else:
-        raise ValueError("String must be one of these values: 'seurat_v3', 'seurat', 'cell_ranger', 'pearson_residuals',\
-                        'random_all_genes', 'random_per_num'")
+        raise ValueError("String must be one of these values: 'seurat_v3', 'seurat', 'cell_ranger', 'pearson_residuals', random_all_genes', 'random_per_num'")
 
+      # Store feature order in dictionary, using largest number of features in num_feat_list
+        # Except for 'random_per_num' - store dictionary of features
+      if curr_method == 'random_per_num':
+        feat_order_dict[curr_method] = feature_order
+      else:
+        print(f'max(num_feat_list): {max(num_feat_list)}')
+        feat_order_dict[curr_method] = feature_order[:max(num_feat_list)]
+        print(f'Features in feat_order_dict[{curr_method}]: {feat_order_dict[curr_method][:5]}, len: {len(feat_order_dict[curr_method])}')
+        
       # Loop through all numbers of features
       for curr_num_feat in num_feat_list:
         print(f'curr_num_feat: {curr_num_feat}')
@@ -191,6 +204,10 @@ def train_feat_loop_cv(clf, adata, groups_label, num_feat_list, feat_method_list
         # Calculate metrics and store in dictionary
         curr_results = {}
 
+        curr_results['fold'] = [i]
+        curr_results['feat_sel_type'] = [curr_method]
+        curr_results['num_features'] = [curr_num_feat]
+
         curr_results['f1'] = [f1_score(y_test, y_pred)]
         curr_results['accuracy'] = [accuracy_score(y_test, y_pred)]
         curr_results['balanced_accuracy'] = [balanced_accuracy_score(y_test, y_pred)]
@@ -199,10 +216,6 @@ def train_feat_loop_cv(clf, adata, groups_label, num_feat_list, feat_method_list
         curr_results['average_precision'] = [average_precision_score(y_test, y_pred)]
         curr_results['roc_auc'] = [roc_auc_score(y_test, y_pred)]
         curr_results['matthews_corrcoef'] = [matthews_corrcoef(y_test, y_pred)]
-        
-        curr_results['fold'] = [i]
-        curr_results['feat_sel_type'] = [curr_method]
-        curr_results['num_features'] = [curr_num_feat]
         
         # Calculate feature importance
         explainer = shap.TreeExplainer(clf)
@@ -215,7 +228,7 @@ def train_feat_loop_cv(clf, adata, groups_label, num_feat_list, feat_method_list
       print(results_df.shape)
       display(results_df.tail())
 
-  return results_df
+  return results_df, test_indices_dict, feat_order_dict
 
 
 # Training function - train model with set list of features, and score test dataset with same features
