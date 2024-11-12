@@ -9,8 +9,8 @@ import scanpy as sc
 from sklearn import set_config
 from sklearn.svm import LinearSVC
 from sklearn.model_selection import StratifiedGroupKFold, cross_validate
-from sklearn.metrics import accuracy_score, confusion_matrix, ConfusionMatrixDisplay, f1_score, recall_score, precision_score,\
-                            balanced_accuracy_score, matthews_corrcoef, roc_auc_score, RocCurveDisplay, auc, average_precision_score, make_scorer
+from sklearn.metrics import accuracy_score, confusion_matrix, ConfusionMatrixDisplay, f1_score, recall_score, precision_score,balanced_accuracy_score, matthews_corrcoef, roc_auc_score, RocCurveDisplay, auc, average_precision_score, make_scorer
+import shap
 ### Functions
 
 # Convenience method for computing the size of objects
@@ -63,7 +63,6 @@ def create_adata_train(raw_counts_path, norm_counts_path, orig_labels_path):
   adata_all.layers['norm'] = adata_norm.X.copy()
   adata_all.layers['raw'] = raw_subset.X.copy()
 
-# return (raw_subset, adata_norm)
   return adata_all
 
 
@@ -184,17 +183,8 @@ def train_feat_loop_cv(clf, adata, groups_label, num_feat_list, feat_method_list
         else:
           curr_feat = feature_order[:curr_num_feat]
 
-        # Apply normalization for Pearson residuals to training data
-        # if curr_method == 'pearson_residuals':
-        #   # Subset to top N genes
-        #   curr_X_train = X_train[:, curr_feat]
-        #   # Compute and normalize to Pearson residuals
-        #   sc.experimental.pp.normalize_pearson_residuals(curr_X_train)
-        # else:
-        curr_X_train = X_train.copy()
-
         # Train model
-        clf.fit(curr_X_train[:, curr_feat].X, y_train)
+        clf.fit(X_train[:, curr_feat].X, y_train)
         # Get predictions
         y_pred = clf.predict(X_test[:, curr_feat].X)
 
