@@ -9,7 +9,7 @@ import scanpy as sc
 from sklearn import set_config
 from sklearn.svm import LinearSVC
 from sklearn.model_selection import StratifiedGroupKFold, cross_validate
-from sklearn.metrics import accuracy_score, confusion_matrix, ConfusionMatrixDisplay, f1_score, recall_score, precision_score,balanced_accuracy_score, matthews_corrcoef, roc_auc_score, RocCurveDisplay, auc, average_precision_score, make_scorer
+from sklearn.metrics import accuracy_score, confusion_matrix, ConfusionMatrixDisplay, f1_score, recall_score, precision_score,balanced_accuracy_score, matthews_corrcoef, roc_auc_score, average_precision_score
 import shap
 ### Functions
 
@@ -203,6 +203,13 @@ def train_feat_loop_cv(clf, adata, groups_label, num_feat_list, feat_method_list
         curr_results['fold'] = [i]
         curr_results['feat_sel_type'] = [curr_method]
         curr_results['num_features'] = [curr_num_feat]
+        
+        # Calculate feature importance
+        explainer = shap.TreeExplainer(clf)
+        shap_values = explainer.shap_values(X_test[:, curr_feat])
+        curr_results['shap_values'] = [shap_values]
+
+        # Convert values into dataframe
         results_df = pd.concat([results_df, pd.DataFrame.from_dict(curr_results)], ignore_index=True)
 
   return results_df
