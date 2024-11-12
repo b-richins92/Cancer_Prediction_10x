@@ -144,6 +144,7 @@ def train_feat_loop_cv(clf, adata, groups_label, num_feat_list, feat_method_list
   results_df = pd.DataFrame()
   test_indices_dict = {}
   feat_order_dict = {}
+  shap_results = {}
 
   # Set up X and y
   X = adata.copy()
@@ -163,6 +164,7 @@ def train_feat_loop_cv(clf, adata, groups_label, num_feat_list, feat_method_list
     # Loop through all feature selection methods
     for curr_method in feat_method_list:
       print(f'curr_method: {curr_method}')
+      shap_results[curr_method] = {}
       # Select features based on feature selection method
       if curr_method in ['seurat_v3', 'pearson_residuals', 'seurat', 'cell_ranger']:
         feature_order = get_hvgs(X_train, curr_method)
@@ -182,13 +184,12 @@ def train_feat_loop_cv(clf, adata, groups_label, num_feat_list, feat_method_list
       if curr_method == 'random_per_num':
         feat_order_dict[curr_method] = feature_order
       else:
-        print(f'max(num_feat_list): {max(num_feat_list)}')
         feat_order_dict[curr_method] = feature_order[:max(num_feat_list)]
-        print(f'Features in feat_order_dict[{curr_method}]: {feat_order_dict[curr_method][:5]}, len: {len(feat_order_dict[curr_method])}')
         
       # Loop through all numbers of features
       for curr_num_feat in num_feat_list:
         print(f'curr_num_feat: {curr_num_feat}')
+        shap_results[curr_method][curr_num_feat] = {}
       
         # Extract top features depending on method
         if curr_method == 'random_per_num':
@@ -220,7 +221,7 @@ def train_feat_loop_cv(clf, adata, groups_label, num_feat_list, feat_method_list
         # Calculate feature importance
         explainer = shap.TreeExplainer(clf)
         shap_values = explainer.shap_values(X_test[:, curr_feat].X)
-        curr_results['shap_values'] = [np.array(shap_values)]
+        shap_results[curr_method][curr_num_feat][i] = shap_values
 
         # Convert values into dataframe
         results_df = pd.concat([results_df, pd.DataFrame.from_dict(curr_results)], ignore_index=True)
@@ -228,7 +229,7 @@ def train_feat_loop_cv(clf, adata, groups_label, num_feat_list, feat_method_list
       print(results_df.shape)
       display(results_df.tail())
 
-  return results_df, test_indices_dict, feat_order_dict
+  return results_df, test_indices_dict, feat_order_dict, shap_results
 
 
 # Training function - train model with set list of features, and score test dataset with same features
