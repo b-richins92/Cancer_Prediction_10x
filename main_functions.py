@@ -206,11 +206,14 @@ def train_feat_loop_cv(clf, adata, groups_label, num_feat_list, feat_method_list
         
         # Calculate feature importance
         explainer = shap.TreeExplainer(clf)
-        shap_values = explainer.shap_values(X_test[:, curr_feat])
+        shap_values = explainer.shap_values(X_test[:, curr_feat].X)
+        print(f'shap_values[:5]: {shap_values[:5]}')
         curr_results['shap_values'] = [shap_values]
 
         # Convert values into dataframe
         results_df = pd.concat([results_df, pd.DataFrame.from_dict(curr_results)], ignore_index=True)
+        display(results_df.tail())
+        results_df.to_csv('results_df_20241112_shap.csv')
 
   return results_df
 
