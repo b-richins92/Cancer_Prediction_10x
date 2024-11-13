@@ -298,20 +298,21 @@ def make_line_plots_metrics(results_df):
 
   return g1
 
-# Calculate Jaccard coefficient overlap between feature sets
-def calc_jaccard_coeff(method_list, num_feat_list, feat_dict, test_folds_dict):
+# Calculate Jaccard coefficient overlap between feature sets between methods
+def calc_jaccard_coeff(method_list, num_feat_list, feat_dict, num_folds):
     """
     Calculate Jaccard coefficient for 
     Inputs:
         - method_list: List of feature selection methods
         - num_feat_list: List of numbers of features
         - feat_dict: Dictionary containing order of features for each method and fold
-        - test_folds_dict: Dictionary containing indices of test samples by fold
+        - num_folds: Number of folds
     Outputs:
         - Dataframe with Jaccard coefficients for a given number of features
     """
+    jaccard_df = pd.DataFrame()
     # Loop through folds
-    for fold, index_list in test_folds_dict.items():
+    for fold in range(num_folds):
         print(f'fold: {fold}')
         # Loop through number of features
         for curr_num_feat in num_feat_list: 
@@ -341,8 +342,53 @@ def calc_jaccard_coeff(method_list, num_feat_list, feat_dict, test_folds_dict):
                          'num_features': [curr_num_feat], 'fold': [fold],
                          'jaccard_coeff': [curr_jaccard]})
                     jaccard_df = pd.concat([jaccard_df,curr_jaccard_df], ignore_index=True)
-                display(jaccard_df.tail())
-    jaccard_df.to_csv('jaccard_df.csv')
+    
+    return jaccard_df
+
+# Calculate Jaccard coefficient overlap between feature sets between folds
+def calc_jaccard_coeff_btw_folds(method_list, num_feat_list, feat_dict, num_folds):
+    """
+    Calculate Jaccard coefficient for 
+    Inputs:
+        - method_list: List of feature selection methods
+        - num_feat_list: List of numbers of features
+        - feat_dict: Dictionary containing order of features for each method and fold
+        - num_folds: Number of folds
+    Outputs:
+        - Dataframe with Jaccard coefficients for a given number of features
+    """
+    jaccard_df = pd.DataFrame()
+    # Loop through methods
+    for curr_method in method_list:
+        print(f'curr_method: {curr_method}')
+        # Loop through number of features
+        for curr_num_feat in num_feat_list: 
+            # Loop through first set of folds
+            for i in range(num_folds):
+                # Get list of features for fold 1
+                if curr_method == 'random_per_num':
+                  curr_feat_1 = feat_dict[curr_method][i][curr_num_feat]
+                else:
+                  curr_feat_1 = feat_dict[curr_method][i][:curr_num_feat]
+                fold1_feat_set = set(curr_feat_1)
+                
+                # Loop through second set of folds
+                for j in range(i):
+                    # Get list of features for fold 2
+                    if curr_method == 'random_per_num':
+                      curr_feat_2 = feat_dict[curr_method][j][curr_num_feat]
+                    else:
+                      curr_feat_2 = feat_dict[curr_method][j][:curr_num_feat]
+                    fold2_feat_set = set(curr_feat_2)
+                    # Calculate Jaccard coefficient
+                    curr_jaccard = len(fold1_feat_set.intersection(fold2_feat_set)) /\
+                                    len(fold1_feat_set.union(fold2_feat_set))
+                    curr_jaccard_df = pd.DataFrame(
+                        {'method': [curr_method], 'num_features': [curr_num_feat],
+                         'fold1': [i], 'fold2': [j],
+                         'jaccard_coeff': [curr_jaccard]})
+                    jaccard_df = pd.concat([jaccard_df,curr_jaccard_df], ignore_index=True)
+#            display(jaccard_df.tail())
     return jaccard_df
 
 # Generate feature importance SHAP plots for a given method and number of features across folds
@@ -387,25 +433,31 @@ def plot_feat_importance(adata, method, num_feat, feat_dict, shap_dict, test_fol
 #        display(curr_fold_df.head())
         # Concatenate dataframe to main dataframe - keep missing values as NaN?
         shap_vals_df = pd.concat([shap_vals_df, curr_fold_df])
-    print(shap_vals_df.shape)
-    display(shap_vals_df.head())
-    display(shap_vals_df.tail())
-    shap_vals_df.to_csv(f'shap_vals_df_{method}_features{num_feat}.csv')
+
+#    shap_vals_df.to_csv(f'shap_vals_df_{method}_features{num_feat}.csv')
 
     # Convert missing values to 0
 #    shap_vals_df_no_na = shap_vals_df.fillna(0)
 
     # Calculate variance and sort shap_vals_df by variance
     shap_var_sort = shap_vals_df.var(axis = 0).sort_values(ascending = False)
-    shap_vals_df = shap_vals_df[shap_var_sort.index]
+    shap_vals_df_sort = shap_vals_df[shap_var_sort.index]
 
     # Subset anndata to same cells and features in SHAP value frame
     adata_sub_vals = adata[shap_vals_df.index, shap_vals_df.columns].to_df()
 
     # Create beeswarm SHAP plot sorted by highest variance
     fig = plt.figure() 
-    shap.summary_plot(shap_vals_df.values,adata_sub_vals, max_display = 10, sort = False, show = False)
-    fig.savefig(f'beeswarm_{method}_features{num_feat}.png', bbox_inches='tight')
+    shap.summary_plot(shap_vals_df.values,adata_sub_vals, max_display = 10, #sort = False, 
+                      show = False)
+    fig.savefig(f'shap_outputs/beeswarm_{method}_features{num_feat}.png', bbox_inches='tight')
+    plt.close(fig)
+
+    fig = plt.figure() 
+    shap.summary_plot(shap_vals_df_sort.values,adata_sub_vals[shap_var_sort.index],
+                      max_display = 10, sort = False, 
+                      show = False)
+    fig.savefig(f'shap_outputs_mean/beeswarm_{method}_features{num_feat}.png', bbox_inches='tight')
     plt.close(fig)
     
-    return shap_vals_df#, fig
+    return shap_vals_df
