@@ -11,6 +11,7 @@ from sklearn.svm import LinearSVC
 from sklearn.model_selection import StratifiedGroupKFold, cross_validate
 from sklearn.metrics import accuracy_score, confusion_matrix, ConfusionMatrixDisplay, f1_score, recall_score, precision_score,balanced_accuracy_score, matthews_corrcoef, roc_auc_score, average_precision_score
 import shap
+
 ### Functions
 
 # Convenience method for computing the size of objects
@@ -227,13 +228,10 @@ def train_feat_loop_cv(clf, adata, groups_label, num_feat_list, feat_method_list
         explainer = shap.TreeExplainer(clf)
         shap_values = explainer.shap_values(X_test[:, curr_feat].X)
         shap_results[curr_method][curr_num_feat][i] = shap_values
-        print(f'shap_results[{curr_method}][{curr_num_feat}]: {shap_results[curr_method][curr_num_feat].keys()}')
 
         # Convert values into dataframe
         results_df = pd.concat([results_df, pd.DataFrame.from_dict(curr_results)], ignore_index=True)
 #        results_df.to_csv('results_df_20241112_shap.csv')
-#      print(results_df.shape)
-#      display(results_df.tail())
 
   return results_df, test_indices_dict, feat_order_dict, shap_results
 
@@ -301,3 +299,67 @@ def make_line_plots_metrics(results_df):
   return g1
 
 # Calculate Jaccard coefficient overlap between feature sets
+
+# Generate feature importance SHAP plots for a given method and number of features across folds
+def plot_feat_importance(adata, method, num_feat, feat_dict, shap_dict, test_folds_dict):
+    """
+    Consolidates SHAP values across folds and generates beeswarm SHAP plot for feature importance
+    Inputs:
+        - adata: AnnData object containing gene expression values
+        - method: String of highly variable gene method used
+        - num_feat: Number of features to select for
+        - feat_dict: Dictionary containing order of features for each method and fold
+        - shap_dict: Dictionary containing SHAP values for each method, number of features, and fold
+        - test_folds_dict: Dictionary containing indices of test samples by fold
+    Outputs:
+        - Dataframe of SHAP values (saved)
+        - SHAP plot (saved)
+    """
+
+    # Get X index and column names
+    X_index = adata.obs_names
+    feat_names = adata.var_names
+
+    # Set up dataframe to store all values
+    shap_vals_df = pd.DataFrame()
+    
+    # Loop through each fold
+    for fold, index_list in test_folds_dict.items():
+        print(f'fold: {fold}')
+        curr_cells = X_index[index_list]
+
+        # Get current set of features
+        if curr_method == 'random_per_num':
+          curr_feat = feat_dict[method][fold][num_feat]
+        else:
+          curr_feat = feat_dict[method][fold][:num_feat]
+    
+        # Create dataframe with cell indices, features, and SHAP values
+        curr_shap = shap_dict[method][num_feat][fold]
+        curr_fold_df = pd.DataFrame(data = curr_shap,
+                                    index = curr_cells,
+                                    columns = curr_feats)
+        print(curr_fold_df.shape)
+        display(curr_fold_df.head())
+        # Concatenate dataframe to main dataframe - keep missing values as NaN?
+        shap_vals_df = pd.concat([shap_vals_df, curr_fold_df])
+    print(shap_vals_df.shape)
+    display(shap_vals_df.head())
+    display(shap_vals_df.tail())
+    shap_vals_df.to_csv(f'shap_vals_df_{method}_features{num_feat}.csv')
+
+    # Convert missing values to 0
+#    shap_vals_df_no_na = shap_vals_df.fillna(0)
+
+    # Calculate variance and sort shap_vals_df by variance
+    shap_var_sort = shap_vals_df.var(axis = 0).sort_values(ascending = False)
+    shap_vals_df = shap_vals_df[shap_var_sort.index]
+
+    # Subset anndata to same cells and features in SHAP value frame
+    adata_sub_vals = adata[shap_vals_df.index, shap_vals_df.columns].to_df()
+
+    # Create beeswarm SHAP plot sorted by highest variance
+    fig = shap.summary_plot(shap_vals_df.values,adata_sub_vals, max_display = 10, sort = False)
+    fig.savefig(f'beeswarm_{method}_features{num_feat}.png', bbox_inches='tight')
+    
+    return shap_vals_df, fig
