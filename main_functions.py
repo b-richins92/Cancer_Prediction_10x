@@ -343,6 +343,7 @@ def calc_jaccard_coeff(method_list, num_feat_list, feat_dict, test_folds_dict):
                                                 'fold': [fold],
                                                 'jaccard_coeff': [curr_jaccard],
                                                 ignore_index=True)
+                                            )
     jaccard_df.to_csv('jaccard_df.csv')
     return jaccard_df
 
