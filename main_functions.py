@@ -326,19 +326,23 @@ def plot_feat_importance(adata, method, num_feat, feat_dict, shap_dict, test_fol
     # Loop through each fold
     for fold, index_list in test_folds_dict.items():
         print(f'fold: {fold}')
+        print(f'len(index_list): {len(index_list)}')
         curr_cells = X_index[index_list]
+        print(f'len(curr_cells): {len(curr_cells)}')
 
         # Get current set of features
-        if curr_method == 'random_per_num':
+        if method == 'random_per_num':
           curr_feat = feat_dict[method][fold][num_feat]
         else:
           curr_feat = feat_dict[method][fold][:num_feat]
+        print(f'len(curr_feat): {len(curr_feat)}')
     
         # Create dataframe with cell indices, features, and SHAP values
         curr_shap = shap_dict[method][num_feat][fold]
+        print(f'curr_shap.shape: {curr_shap.shape}')
         curr_fold_df = pd.DataFrame(data = curr_shap,
                                     index = curr_cells,
-                                    columns = curr_feats)
+                                    columns = curr_feat)
         print(curr_fold_df.shape)
         display(curr_fold_df.head())
         # Concatenate dataframe to main dataframe - keep missing values as NaN?
