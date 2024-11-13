@@ -155,6 +155,7 @@ def train_feat_loop_cv(clf, adata, groups_label, num_feat_list, feat_method_list
   sgkf = StratifiedGroupKFold(n_splits=k_fold, shuffle = True, random_state = random_state)
   # Loop through each fold
   for i, (train_index, test_index) in enumerate(sgkf.split(X, y, groups_col)):
+    print(f'i: {i}')
     X_train, X_test = X[train_index], X[test_index]
     y_train, y_test = y.iloc[train_index], y.iloc[test_index]
 
@@ -164,7 +165,8 @@ def train_feat_loop_cv(clf, adata, groups_label, num_feat_list, feat_method_list
     # Loop through all feature selection methods
     for curr_method in feat_method_list:
       print(f'curr_method: {curr_method}')
-      shap_results[curr_method] = {}
+      if i == 0:
+          shap_results[curr_method] = {}
       # Select features based on feature selection method
       if curr_method in ['seurat_v3', 'pearson_residuals', 'seurat', 'cell_ranger']:
         feature_order = get_hvgs(X_train, curr_method)
@@ -181,15 +183,18 @@ def train_feat_loop_cv(clf, adata, groups_label, num_feat_list, feat_method_list
 
       # Store feature order in dictionary, using largest number of features in num_feat_list
         # Except for 'random_per_num' - store dictionary of features
+      if i == 0:
+        feat_order_dict[curr_method] = {}
       if curr_method == 'random_per_num':
-        feat_order_dict[curr_method] = feature_order
+        feat_order_dict[curr_method][i] = feature_order
       else:
-        feat_order_dict[curr_method] = feature_order[:max(num_feat_list)]
+        feat_order_dict[curr_method][i] = feature_order[:max(num_feat_list)]
         
       # Loop through all numbers of features
       for curr_num_feat in num_feat_list:
         print(f'curr_num_feat: {curr_num_feat}')
-        shap_results[curr_method][curr_num_feat] = {}
+        if i == 0:
+          shap_results[curr_method][curr_num_feat] = {}
       
         # Extract top features depending on method
         if curr_method == 'random_per_num':
@@ -222,12 +227,13 @@ def train_feat_loop_cv(clf, adata, groups_label, num_feat_list, feat_method_list
         explainer = shap.TreeExplainer(clf)
         shap_values = explainer.shap_values(X_test[:, curr_feat].X)
         shap_results[curr_method][curr_num_feat][i] = shap_values
+        print(f'shap_results[{curr_method}][{curr_num_feat}]: {shap_results[curr_method][curr_num_feat].keys()}')
 
         # Convert values into dataframe
         results_df = pd.concat([results_df, pd.DataFrame.from_dict(curr_results)], ignore_index=True)
-        results_df.to_csv('results_df_20241112_shap.csv')
-      print(results_df.shape)
-      display(results_df.tail())
+#        results_df.to_csv('results_df_20241112_shap.csv')
+#      print(results_df.shape)
+#      display(results_df.tail())
 
   return results_df, test_indices_dict, feat_order_dict, shap_results
 
