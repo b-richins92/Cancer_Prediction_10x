@@ -334,16 +334,14 @@ def calc_jaccard_coeff(method_list, num_feat_list, feat_dict, test_folds_dict):
                       curr_feat_2 = feat_dict[method2][fold][:curr_num_feat]
                     method2_feat_set = set(curr_feat_2)
                     # Calculate Jaccard coefficient
-                    curr_jaccard = len(method1_feat_set.intersection(method2_feat_set)) / len(method1_feat_set.union(method2_feat_set))
-                    jaccard_df = pd.concat([jaccard_df,
-                                            pd.DataFrame({
-                                                'method1': [method1],
-                                                'method2': [method2],
-                                                'num_features': [curr_num_feat],
-                                                'fold': [fold],
-                                                'jaccard_coeff': [curr_jaccard],
-                                                ignore_index=True)
-                                            )
+                    curr_jaccard = len(method1_feat_set.intersection(method2_feat_set)) /\
+                                    len(method1_feat_set.union(method2_feat_set))
+                    curr_jaccard_df = pd.DataFrame(
+                        {'method1': [method1], 'method2': [method2],
+                         'num_features': [curr_num_feat], 'fold': [fold],
+                         'jaccard_coeff': [curr_jaccard]})
+                    jaccard_df = pd.concat([jaccard_df,curr_jaccard_df], ignore_index=True)
+                display(jaccard_df.tail())
     jaccard_df.to_csv('jaccard_df.csv')
     return jaccard_df
 
