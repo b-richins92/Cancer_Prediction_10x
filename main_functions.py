@@ -143,7 +143,7 @@ def train_feat_loop_cv(clf, adata, groups_label, num_feat_list, feat_method_list
   """
 
   results_df = pd.DataFrame()
-  test_indices_dict = {}
+  fold_indices_dict = {}
   feat_order_dict = {}
   shap_results = {}
 
@@ -161,7 +161,7 @@ def train_feat_loop_cv(clf, adata, groups_label, num_feat_list, feat_method_list
     y_train, y_test = y.iloc[train_index], y.iloc[test_index]
 
     # Store test indices in a dictionary by fold
-    test_indices_dict[i] = test_index
+    fold_indices_dict[i] = {'train': train_index, 'test': test_index}
 
     # Loop through all feature selection methods
     for curr_method in feat_method_list:
@@ -231,9 +231,8 @@ def train_feat_loop_cv(clf, adata, groups_label, num_feat_list, feat_method_list
 
         # Convert values into dataframe
         results_df = pd.concat([results_df, pd.DataFrame.from_dict(curr_results)], ignore_index=True)
-#        results_df.to_csv('results_df_20241112_shap.csv')
 
-  return results_df, test_indices_dict, feat_order_dict, shap_results
+  return results_df, fold_indices_dict, feat_order_dict, shap_results
 
 
 # Training function - train model with set list of features, and score test dataset with same features
@@ -286,7 +285,6 @@ def make_line_plots_metrics(results_df):
                                     index = ['feat_sel_type', 'num_features'],
                                     columns = ['metric'],
                                     aggfunc=['mean', 'std'])
-#  results_df_pivot.to_csv('results_df_pivot.csv')
 
   # Plot 1 figure with all test metrics versus number of features - Facet by metric. Color by feature type
   g1 = sns.catplot(
@@ -296,7 +294,7 @@ def make_line_plots_metrics(results_df):
       sharex = False, alpha = 0.7
   )
 
-  return g1
+  return results_df_pivot, g1
 
 # Calculate Jaccard coefficient overlap between feature sets between methods
 def calc_jaccard_coeff(method_list, num_feat_list, feat_dict, num_folds):
@@ -392,7 +390,7 @@ def calc_jaccard_coeff_btw_folds(method_list, num_feat_list, feat_dict, num_fold
     return jaccard_df
 
 # Generate feature importance SHAP plots for a given method and number of features across folds
-def plot_feat_importance(adata, method, num_feat, feat_dict, shap_dict, test_folds_dict):
+def plot_feat_importance(adata, method, num_feat, feat_dict, shap_dict, folds_dict):
     """
     Consolidates SHAP values across folds and generates beeswarm SHAP plot for feature importance
     Inputs:
@@ -401,7 +399,7 @@ def plot_feat_importance(adata, method, num_feat, feat_dict, shap_dict, test_fol
         - num_feat: Number of features to select for
         - feat_dict: Dictionary containing order of features for each method and fold
         - shap_dict: Dictionary containing SHAP values for each method, number of features, and fold
-        - test_folds_dict: Dictionary containing indices of test samples by fold
+        - folds_dict: Dictionary containing indices of train and test samples by fold
     Outputs:
         - Dataframe of SHAP values (saved)
         - SHAP plot (saved)
@@ -415,9 +413,9 @@ def plot_feat_importance(adata, method, num_feat, feat_dict, shap_dict, test_fol
     shap_vals_df = pd.DataFrame()
     
     # Loop through each fold
-    for fold, index_list in test_folds_dict.items():
+    for fold, index_lists in folds_dict.items():
         print(f'fold: {fold}')
-        curr_cells = X_index[index_list]
+        curr_cells = X_index[index_lists['test']]
 
         # Get current set of features
         if method == 'random_per_num':
@@ -434,30 +432,31 @@ def plot_feat_importance(adata, method, num_feat, feat_dict, shap_dict, test_fol
         # Concatenate dataframe to main dataframe - keep missing values as NaN?
         shap_vals_df = pd.concat([shap_vals_df, curr_fold_df])
 
-#    shap_vals_df.to_csv(f'shap_vals_df_{method}_features{num_feat}.csv')
+#    shap_vals_df.to_csv(f'shap_20241114/shap_vals_df_{method}_features{num_feat}.csv')
 
     # Convert missing values to 0
-#    shap_vals_df_no_na = shap_vals_df.fillna(0)
+    shap_vals_df_no_na = shap_vals_df.fillna(0)
 
-    # Calculate variance and sort shap_vals_df by variance
-    shap_var_sort = shap_vals_df.var(axis = 0).sort_values(ascending = False)
+    # Calculate median and sort shap_vals_df by median
+    shap_var_sort = np.abs(shap_vals_df_no_na).median(axis=0).sort_values(ascending = False)
     shap_vals_df_sort = shap_vals_df[shap_var_sort.index]
 
     # Subset anndata to same cells and features in SHAP value frame
     adata_sub_vals = adata[shap_vals_df.index, shap_vals_df.columns].to_df()
 
-    # Create beeswarm SHAP plot sorted by highest variance
+    # Create beeswarm SHAP plot sorted by highest absolute mean (missing values as 0s)
     fig = plt.figure() 
-    shap.summary_plot(shap_vals_df.values,adata_sub_vals, max_display = 10, #sort = False, 
+    shap.summary_plot(shap_vals_df_no_na.values,adata_sub_vals, max_display = 10, #sort = False, 
                       show = False)
-    fig.savefig(f'shap_outputs/beeswarm_{method}_features{num_feat}.png', bbox_inches='tight')
+    fig.savefig(f'shap_20241114/mean/beeswarm_{method}_features{num_feat}.png', bbox_inches='tight')
     plt.close(fig)
 
+    # Create beeswarm SHAP plot sorted by highest absolute median (missing values as 0s)
     fig = plt.figure() 
     shap.summary_plot(shap_vals_df_sort.values,adata_sub_vals[shap_var_sort.index],
                       max_display = 10, sort = False, 
                       show = False)
-    fig.savefig(f'shap_outputs_mean/beeswarm_{method}_features{num_feat}.png', bbox_inches='tight')
+    fig.savefig(f'shap_20241114/median/beeswarm_{method}_features{num_feat}.png', bbox_inches='tight')
     plt.close(fig)
     
     return shap_vals_df
