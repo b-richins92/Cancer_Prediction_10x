@@ -217,12 +217,12 @@ def train_feat_loop_cv(clf, adata, groups_label, num_feat_list, feat_method_list
 
         curr_results['f1'] = [f1_score(y_test, y_pred)]
         curr_results['accuracy'] = [accuracy_score(y_test, y_pred)]
-        curr_results['balanced_accuracy'] = [balanced_accuracy_score(y_test, y_pred)]
         curr_results['recall'] = [recall_score(y_test, y_pred)]
         curr_results['precision'] = [precision_score(y_test, y_pred)]
-        curr_results['average_precision'] = [average_precision_score(y_test, y_pred)]
-        curr_results['roc_auc'] = [roc_auc_score(y_test, y_pred)]
-        curr_results['matthews_corrcoef'] = [matthews_corrcoef(y_test, y_pred)]
+        # curr_results['balanced_accuracy'] = [balanced_accuracy_score(y_test, y_pred)]
+        # curr_results['average_precision'] = [average_precision_score(y_test, y_pred)]
+        # curr_results['roc_auc'] = [roc_auc_score(y_test, y_pred)]
+        # curr_results['matthews_corrcoef'] = [matthews_corrcoef(y_test, y_pred)]
         
         # Calculate feature importance
         explainer = shap.TreeExplainer(clf)
@@ -448,7 +448,7 @@ def plot_feat_importance(adata, method, num_feat, feat_dict, shap_dict, folds_di
     fig = plt.figure() 
     shap.summary_plot(shap_vals_df_no_na.values,adata_sub_vals, max_display = 10, #sort = False, 
                       show = False)
-    fig.savefig(f'shap_20241114/mean/beeswarm_{method}_features{num_feat}.png', bbox_inches='tight')
+    fig.savefig(f'shap_20241115/mean/beeswarm_{method}_features{num_feat}.png', bbox_inches='tight')
     plt.close(fig)
 
     # Create beeswarm SHAP plot sorted by highest absolute median (missing values as 0s)
@@ -456,7 +456,7 @@ def plot_feat_importance(adata, method, num_feat, feat_dict, shap_dict, folds_di
     shap.summary_plot(shap_vals_df_sort.values,adata_sub_vals[shap_var_sort.index],
                       max_display = 10, sort = False, 
                       show = False)
-    fig.savefig(f'shap_20241114/median/beeswarm_{method}_features{num_feat}.png', bbox_inches='tight')
+    fig.savefig(f'shap_20241115/median/beeswarm_{method}_features{num_feat}.png', bbox_inches='tight')
     plt.close(fig)
     
     return shap_vals_df
