@@ -78,15 +78,22 @@ def get_diff_exp_genes(adata_obj, corr_method = 'bonferroni', pval_cutoff = 0.05
   Output: Dataframe with differentially expressed genes in each group after filtering
   """
 
-  adata_de = sc.tl.rank_genes_groups(adata_obj, groupby='cancer_label', method='wilcoxon',
+  adata_obj.obs['orig_cancer_label'] = pd.Categorical(adata_obj.obs['orig_cancer_label'])
+  adata_deg = sc.tl.rank_genes_groups(adata_obj, groupby='orig_cancer_label', method='wilcoxon',
                                          tie_correct = True, corr_method = corr_method,
-                                         pts = True, copy = True)
-  adata_de_df = sc.get.rank_genes_groups_df(adata_de, group = None,
+                                         pts = True, copy = True, layer = 'norm')
+  adata_deg_df = sc.get.rank_genes_groups_df(adata_deg, group = None,
                                                 pval_cutoff = pval_cutoff, log2fc_min = log2fc_min)
-  adata_de_df_filt = adata_de_df[adata_de_df['pct_nz_group'] > 0.1]
-  print(f'Original shape: {adata_de_df.shape} vs after filtering < 10% expression: {adata_de_df_filt.shape}')
-  display(adata_de_df_filt.head())
-  return adata_de_df_filt
+  adata_deg_df_filt = adata_deg_df[adata_deg_df['pct_nz_group'] > 0.1]
+  print(f'Original shape: {adata_deg_df.shape} vs after filtering < 10% expression: {adata_deg_df_filt.shape}')
+  display(adata_deg_df_filt.head())
+
+  # Get ordered lists of genes - one for cancer, one for normal
+  adata_deg_df_filt['group'] = adata_deg_df_filt['group'].astype('int')
+  adata_deg_cancer = adata_deg_df_filt[adata_deg_df_filt['group']== 0].index
+  adata_deg_norm = adata_deg_df_filt[adata_deg_df_filt['group']== 1].index
+  
+  return adata_deg_cancer, adata_deg_norm
 
 # Get highly variable genes from dataset
 def get_hvgs(adata, method):
@@ -133,6 +140,7 @@ def train_feat_loop_cv(clf, adata, groups_label, num_feat_list, feat_method_list
       - num_feat_list: List of numbers of features to use
       - feat_method_list: List of feature selection methods
         - Scanpy highly variable genes: 'seurat_v3', 'seurat', 'cell_ranger', 'pearson_residuals'
+        - Differential expression: 'dge'
         - Random selection
           - 'random_all_genes': Randomize order of all genes, then select top N genes at each number
           - 'random_per_num': Pick a new set of N random genes for each N
@@ -171,6 +179,9 @@ def train_feat_loop_cv(clf, adata, groups_label, num_feat_list, feat_method_list
       # Select features based on feature selection method
       if curr_method in ['seurat_v3', 'pearson_residuals', 'seurat', 'cell_ranger']:
         feature_order = get_hvgs(X_train, curr_method)
+      # Two feature orders will be returned for differential gene expression - one for cancer, one for normal
+      elif curr_method == 'dge': 
+        feature_order = get_diff_exp_genes(X_train)
       elif curr_method == 'random_all_genes':
         rng = np.random.default_rng(random_state)
         feature_order = rng.choice(adata.var_names, size = adata.n_vars, replace=False)
@@ -180,7 +191,7 @@ def train_feat_loop_cv(clf, adata, groups_label, num_feat_list, feat_method_list
       #   for curr_num_feat in num_feat_list:
       #     feature_order[curr_num_feat] = rng.choice(adata.var_names, size = curr_num_feat, replace=False)
       else:
-        raise ValueError("String must be one of these values: 'seurat_v3', 'seurat', 'cell_ranger', 'pearson_residuals', random_all_genes'") #, 'random_per_num'
+        raise ValueError("String must be one of these values: 'seurat_v3', 'seurat', 'cell_ranger', 'pearson_residuals', 'dge', 'random_all_genes'") #, 'random_per_num'
 
       # Store feature order in dictionary, using largest number of features in num_feat_list
         # Except for 'random_per_num' - store dictionary of features
