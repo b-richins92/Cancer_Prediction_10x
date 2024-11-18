@@ -78,8 +78,9 @@ def get_diff_exp_genes(adata_obj, corr_method = 'bonferroni', pval_cutoff = 0.05
   Output: Dataframe with differentially expressed genes in each group after filtering
   """
 
-  adata_obj.obs['orig_cancer_label'] = pd.Categorical(adata_obj.obs['orig_cancer_label'])
-  adata_deg = sc.tl.rank_genes_groups(adata_obj, groupby='orig_cancer_label', method='wilcoxon',
+  adata_copy = adata_obj.copy()
+  adata_copy.obs['orig_cancer_label'] = pd.Categorical(adata_copy.obs['orig_cancer_label'])
+  adata_deg = sc.tl.rank_genes_groups(adata_copy, groupby='orig_cancer_label', method='wilcoxon',
                                          tie_correct = True, corr_method = corr_method,
                                          pts = True, copy = True, layer = 'norm')
   adata_deg_df = sc.get.rank_genes_groups_df(adata_deg, group = None,
@@ -180,8 +181,9 @@ def train_feat_loop_cv(clf, adata, groups_label, num_feat_list, feat_method_list
       if curr_method in ['seurat_v3', 'pearson_residuals', 'seurat', 'cell_ranger']:
         feature_order = get_hvgs(X_train, curr_method)
       # Two feature orders will be returned for differential gene expression - one for cancer, one for normal
-      elif curr_method == 'dge': 
-        feature_order = get_diff_exp_genes(X_train)
+      elif curr_method == 'dge':
+        feature_order = {}
+        feature_order['cancer'], feature_order['norm'] = get_diff_exp_genes(X_train)
       elif curr_method == 'random_all_genes':
         rng = np.random.default_rng(random_state)
         feature_order = rng.choice(adata.var_names, size = adata.n_vars, replace=False)
@@ -199,6 +201,9 @@ def train_feat_loop_cv(clf, adata, groups_label, num_feat_list, feat_method_list
         feat_order_dict[curr_method] = {}
       # if curr_method == 'random_per_num':
       #   feat_order_dict[curr_method][i] = feature_order
+      if curr_method == 'dge':
+        feat_order_dict[curr_method][i] = {'cancer': feature_order['cancer'][:max(num_feat_list)],
+                                           'norm': feature_order['norm'][:max(num_feat_list)]}
       else:
         feat_order_dict[curr_method][i] = feature_order[:max(num_feat_list)]
         
@@ -211,8 +216,14 @@ def train_feat_loop_cv(clf, adata, groups_label, num_feat_list, feat_method_list
         # Extract top features depending on method
         # if curr_method == 'random_per_num':
         #   curr_feat = feature_order[curr_num_feat]
-        # else:
-        curr_feat = feature_order[:curr_num_feat]
+        if curr_method == 'dge':
+          curr_feat = feature_order['cancer'][:int(curr_num_feat/2)].append(feature_order['norm'][:int(curr_num_feat/2)])
+          print(f'dge:')
+          print(f"feature_order['cancer']: {feature_order['cancer'][:5]}")
+          print(f"feature_order['norm']: {feature_order['norm'][:5]}, {feature_order['norm'][-5:]}")
+          print(f'curr_feat: {curr_feat}')
+        else:
+          curr_feat = feature_order[:curr_num_feat]
 
         # Train model
         clf.fit(X_train[:, curr_feat].X, y_train)
@@ -401,7 +412,7 @@ def calc_jaccard_coeff_btw_folds(method_list, num_feat_list, feat_dict, num_fold
     return jaccard_df
 
 # Generate feature importance SHAP plots for a given method and number of features across folds
-def plot_feat_importance(adata, method, num_feat, feat_dict, shap_dict, folds_dict):
+def plot_feat_importance(adata, method, num_feat, feat_dict, shap_dict, folds_dict, file_prefix):
     """
     Consolidates SHAP values across folds and generates beeswarm SHAP plot for feature importance
     Inputs:
@@ -411,6 +422,7 @@ def plot_feat_importance(adata, method, num_feat, feat_dict, shap_dict, folds_di
         - feat_dict: Dictionary containing order of features for each method and fold
         - shap_dict: Dictionary containing SHAP values for each method, number of features, and fold
         - folds_dict: Dictionary containing indices of train and test samples by fold
+        - file_prefix: String for file path to use for saving
     Outputs:
         - Dataframe of SHAP values (saved)
         - SHAP plot (saved)
@@ -459,7 +471,7 @@ def plot_feat_importance(adata, method, num_feat, feat_dict, shap_dict, folds_di
     fig = plt.figure() 
     shap.summary_plot(shap_vals_df_no_na.values,adata_sub_vals, max_display = 10, #sort = False, 
                       show = False)
-    fig.savefig(f'shap_20241115/mean/beeswarm_{method}_features{num_feat}.png', bbox_inches='tight')
+    fig.savefig(f'{file_prefix}mean/beeswarm_{method}_features{num_feat}.png', bbox_inches='tight')
     plt.close(fig)
 
     # Create beeswarm SHAP plot sorted by highest absolute median (missing values as 0s)
@@ -467,7 +479,7 @@ def plot_feat_importance(adata, method, num_feat, feat_dict, shap_dict, folds_di
     shap.summary_plot(shap_vals_df_sort.values,adata_sub_vals[shap_var_sort.index],
                       max_display = 10, sort = False, 
                       show = False)
-    fig.savefig(f'shap_20241115/median/beeswarm_{method}_features{num_feat}.png', bbox_inches='tight')
+    fig.savefig(f'{file_prefix}median/beeswarm_{method}_features{num_feat}.png', bbox_inches='tight')
     plt.close(fig)
     
     return shap_vals_df
