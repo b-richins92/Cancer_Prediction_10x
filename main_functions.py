@@ -218,10 +218,10 @@ def train_feat_loop_cv(clf, adata, groups_label, num_feat_list, feat_method_list
         #   curr_feat = feature_order[curr_num_feat]
         if curr_method == 'dge':
           curr_feat = feature_order['cancer'][:int(curr_num_feat/2)].append(feature_order['norm'][:int(curr_num_feat/2)])
-          print(f'dge:')
-          print(f"feature_order['cancer']: {feature_order['cancer'][:5]}")
-          print(f"feature_order['norm']: {feature_order['norm'][:5]}, {feature_order['norm'][-5:]}")
-          print(f'curr_feat: {curr_feat}')
+          # print(f'dge:')
+          # print(f"feature_order['cancer']: {feature_order['cancer'][:5]}")
+          # print(f"feature_order['norm']: {feature_order['norm'][:5]}, {feature_order['norm'][-5:]}")
+          # print(f'curr_feat: {curr_feat}')
         else:
           curr_feat = feature_order[:curr_num_feat]
 
