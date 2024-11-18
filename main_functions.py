@@ -167,27 +167,27 @@ def train_feat_loop_cv(clf, adata, groups_label, num_feat_list, feat_method_list
     for curr_method in feat_method_list:
       print(f'curr_method: {curr_method}')
       if i == 0:
-          shap_results[curr_method] = {}
+        shap_results[curr_method] = {}
       # Select features based on feature selection method
       if curr_method in ['seurat_v3', 'pearson_residuals', 'seurat', 'cell_ranger']:
         feature_order = get_hvgs(X_train, curr_method)
       elif curr_method == 'random_all_genes':
         rng = np.random.default_rng(random_state)
         feature_order = rng.choice(adata.var_names, size = adata.n_vars, replace=False)
-      elif curr_method == 'random_per_num':
-        rng = np.random.default_rng(random_state)
-        feature_order = {}
-        for curr_num_feat in num_feat_list:
-          feature_order[curr_num_feat] = rng.choice(adata.var_names, size = curr_num_feat, replace=False)
+      # elif curr_method == 'random_per_num':
+      #   rng = np.random.default_rng(random_state)
+      #   feature_order = {}
+      #   for curr_num_feat in num_feat_list:
+      #     feature_order[curr_num_feat] = rng.choice(adata.var_names, size = curr_num_feat, replace=False)
       else:
-        raise ValueError("String must be one of these values: 'seurat_v3', 'seurat', 'cell_ranger', 'pearson_residuals', random_all_genes', 'random_per_num'")
+        raise ValueError("String must be one of these values: 'seurat_v3', 'seurat', 'cell_ranger', 'pearson_residuals', random_all_genes'") #, 'random_per_num'
 
       # Store feature order in dictionary, using largest number of features in num_feat_list
         # Except for 'random_per_num' - store dictionary of features
       if i == 0:
         feat_order_dict[curr_method] = {}
-      if curr_method == 'random_per_num':
-        feat_order_dict[curr_method][i] = feature_order
+      # if curr_method == 'random_per_num':
+      #   feat_order_dict[curr_method][i] = feature_order
       else:
         feat_order_dict[curr_method][i] = feature_order[:max(num_feat_list)]
         
@@ -198,10 +198,10 @@ def train_feat_loop_cv(clf, adata, groups_label, num_feat_list, feat_method_list
           shap_results[curr_method][curr_num_feat] = {}
       
         # Extract top features depending on method
-        if curr_method == 'random_per_num':
-          curr_feat = feature_order[curr_num_feat]
-        else:
-          curr_feat = feature_order[:curr_num_feat]
+        # if curr_method == 'random_per_num':
+        #   curr_feat = feature_order[curr_num_feat]
+        # else:
+        curr_feat = feature_order[:curr_num_feat]
 
         # Train model
         clf.fit(X_train[:, curr_feat].X, y_train)
@@ -318,19 +318,19 @@ def calc_jaccard_coeff(method_list, num_feat_list, feat_dict, num_folds):
             for i in range(len(method_list)):
                 # Get list of features for method 1
                 method1 = method_list[i]
-                if method1 == 'random_per_num':
-                  curr_feat_1 = feat_dict[method1][fold][curr_num_feat]
-                else:
-                  curr_feat_1 = feat_dict[method1][fold][:curr_num_feat]
+                # if method1 == 'random_per_num':
+                #   curr_feat_1 = feat_dict[method1][fold][curr_num_feat]
+                # else:
+                curr_feat_1 = feat_dict[method1][fold][:curr_num_feat]
                 method1_feat_set = set(curr_feat_1)
                 # Loop through method 2
                 for j in range(i):
                     # Get list of features for method 2
                     method2 = method_list[j]
-                    if method2 == 'random_per_num':
-                      curr_feat_2 = feat_dict[method2][fold][curr_num_feat]
-                    else:
-                      curr_feat_2 = feat_dict[method2][fold][:curr_num_feat]
+                    # if method2 == 'random_per_num':
+                    #   curr_feat_2 = feat_dict[method2][fold][curr_num_feat]
+                    # else:
+                    curr_feat_2 = feat_dict[method2][fold][:curr_num_feat]
                     method2_feat_set = set(curr_feat_2)
                     # Calculate Jaccard coefficient
                     curr_jaccard = len(method1_feat_set.intersection(method2_feat_set)) /\
@@ -364,19 +364,19 @@ def calc_jaccard_coeff_btw_folds(method_list, num_feat_list, feat_dict, num_fold
             # Loop through first set of folds
             for i in range(num_folds):
                 # Get list of features for fold 1
-                if curr_method == 'random_per_num':
-                  curr_feat_1 = feat_dict[curr_method][i][curr_num_feat]
-                else:
-                  curr_feat_1 = feat_dict[curr_method][i][:curr_num_feat]
+                # if curr_method == 'random_per_num':
+                #   curr_feat_1 = feat_dict[curr_method][i][curr_num_feat]
+                # else:
+                curr_feat_1 = feat_dict[curr_method][i][:curr_num_feat]
                 fold1_feat_set = set(curr_feat_1)
                 
                 # Loop through second set of folds
                 for j in range(i):
                     # Get list of features for fold 2
-                    if curr_method == 'random_per_num':
-                      curr_feat_2 = feat_dict[curr_method][j][curr_num_feat]
-                    else:
-                      curr_feat_2 = feat_dict[curr_method][j][:curr_num_feat]
+                    # if curr_method == 'random_per_num':
+                    #   curr_feat_2 = feat_dict[curr_method][j][curr_num_feat]
+                    # else:
+                    curr_feat_2 = feat_dict[curr_method][j][:curr_num_feat]
                     fold2_feat_set = set(curr_feat_2)
                     # Calculate Jaccard coefficient
                     curr_jaccard = len(fold1_feat_set.intersection(fold2_feat_set)) /\
@@ -418,10 +418,10 @@ def plot_feat_importance(adata, method, num_feat, feat_dict, shap_dict, folds_di
         curr_cells = X_index[index_lists['test']]
 
         # Get current set of features
-        if method == 'random_per_num':
-          curr_feat = feat_dict[method][fold][num_feat]
-        else:
-          curr_feat = feat_dict[method][fold][:num_feat]
+        # if method == 'random_per_num':
+        #   curr_feat = feat_dict[method][fold][num_feat]
+        # else:
+        curr_feat = feat_dict[method][fold][:num_feat]
     
         # Create dataframe with cell indices, features, and SHAP values
         curr_shap = shap_dict[method][num_feat][fold]
