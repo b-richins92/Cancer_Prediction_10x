@@ -91,6 +91,7 @@ def get_diff_exp_genes(adata_obj, corr_method = 'bonferroni', pval_cutoff = 0.05
 
   # Get ordered lists of genes - one for cancer, one for normal
   adata_deg_df_filt['group'] = adata_deg_df_filt['group'].astype('int')
+  adata_deg_df_filt = adata_deg_df_filt.set_index('names')
   adata_deg_cancer = adata_deg_df_filt[adata_deg_df_filt['group']== 0].index
   adata_deg_norm = adata_deg_df_filt[adata_deg_df_filt['group']== 1].index
   
@@ -218,10 +219,6 @@ def train_feat_loop_cv(clf, adata, groups_label, num_feat_list, feat_method_list
         #   curr_feat = feature_order[curr_num_feat]
         if curr_method == 'dge':
           curr_feat = feature_order['cancer'][:int(curr_num_feat/2)].append(feature_order['norm'][:int(curr_num_feat/2)])
-          # print(f'dge:')
-          # print(f"feature_order['cancer']: {feature_order['cancer'][:5]}")
-          # print(f"feature_order['norm']: {feature_order['norm'][:5]}, {feature_order['norm'][-5:]}")
-          # print(f'curr_feat: {curr_feat}')
         else:
           curr_feat = feature_order[:curr_num_feat]
 
@@ -342,8 +339,10 @@ def calc_jaccard_coeff(method_list, num_feat_list, feat_dict, num_folds):
                 method1 = method_list[i]
                 # if method1 == 'random_per_num':
                 #   curr_feat_1 = feat_dict[method1][fold][curr_num_feat]
-                # else:
-                curr_feat_1 = feat_dict[method1][fold][:curr_num_feat]
+                if method1 == 'dge':
+                  curr_feat_1 = feat_dict[method1][fold]['cancer'][:int(curr_num_feat/2)].append(feat_dict[method1][fold]['norm'][:int(curr_num_feat/2)]) 
+                else:
+                  curr_feat_1 = feat_dict[method1][fold][:curr_num_feat]
                 method1_feat_set = set(curr_feat_1)
                 # Loop through method 2
                 for j in range(i):
@@ -351,8 +350,10 @@ def calc_jaccard_coeff(method_list, num_feat_list, feat_dict, num_folds):
                     method2 = method_list[j]
                     # if method2 == 'random_per_num':
                     #   curr_feat_2 = feat_dict[method2][fold][curr_num_feat]
-                    # else:
-                    curr_feat_2 = feat_dict[method2][fold][:curr_num_feat]
+                    if method2 == 'dge':
+                      curr_feat_2 = feat_dict[method2][fold]['cancer'][:int(curr_num_feat/2)].append(feat_dict[method2][fold]['norm'][:int(curr_num_feat/2)]) 
+                    else:
+                      curr_feat_2 = feat_dict[method2][fold][:curr_num_feat]
                     method2_feat_set = set(curr_feat_2)
                     # Calculate Jaccard coefficient
                     curr_jaccard = len(method1_feat_set.intersection(method2_feat_set)) /\
@@ -388,8 +389,10 @@ def calc_jaccard_coeff_btw_folds(method_list, num_feat_list, feat_dict, num_fold
                 # Get list of features for fold 1
                 # if curr_method == 'random_per_num':
                 #   curr_feat_1 = feat_dict[curr_method][i][curr_num_feat]
-                # else:
-                curr_feat_1 = feat_dict[curr_method][i][:curr_num_feat]
+                if curr_method == 'dge':
+                  curr_feat_1 = feat_dict[curr_method][fold]['cancer'][:int(curr_num_feat/2)].append(feat_dict[curr_method][fold]['norm'][:int(curr_num_feat/2)]) 
+                else:
+                  curr_feat_1 = feat_dict[curr_method][i][:curr_num_feat]
                 fold1_feat_set = set(curr_feat_1)
                 
                 # Loop through second set of folds
@@ -397,8 +400,10 @@ def calc_jaccard_coeff_btw_folds(method_list, num_feat_list, feat_dict, num_fold
                     # Get list of features for fold 2
                     # if curr_method == 'random_per_num':
                     #   curr_feat_2 = feat_dict[curr_method][j][curr_num_feat]
-                    # else:
-                    curr_feat_2 = feat_dict[curr_method][j][:curr_num_feat]
+                    if curr_method == 'dge':
+                      curr_feat_2 = feat_dict[curr_method][fold]['cancer'][:int(curr_num_feat/2)].append(feat_dict[curr_method][fold]['norm'][:int(curr_num_feat/2)]) 
+                    else:
+                      curr_feat_2 = feat_dict[curr_method][j][:curr_num_feat]
                     fold2_feat_set = set(curr_feat_2)
                     # Calculate Jaccard coefficient
                     curr_jaccard = len(fold1_feat_set.intersection(fold2_feat_set)) /\
@@ -443,8 +448,12 @@ def plot_feat_importance(adata, method, num_feat, feat_dict, shap_dict, folds_di
         # Get current set of features
         # if method == 'random_per_num':
         #   curr_feat = feat_dict[method][fold][num_feat]
-        # else:
-        curr_feat = feat_dict[method][fold][:num_feat]
+        if method == 'dge':
+          # print(f'dge:')
+          # print(f'feat_dict[{method}][{fold}]: {feat_dict[method][fold]}')
+          curr_feat = feat_dict[method][fold]['cancer'][:int(num_feat/2)].append(feat_dict[method][fold]['norm'][:int(num_feat/2)]) 
+        else:
+          curr_feat = feat_dict[method][fold][:num_feat]
     
         # Create dataframe with cell indices, features, and SHAP values
         curr_shap = shap_dict[method][num_feat][fold]
@@ -455,7 +464,7 @@ def plot_feat_importance(adata, method, num_feat, feat_dict, shap_dict, folds_di
         # Concatenate dataframe to main dataframe - keep missing values as NaN?
         shap_vals_df = pd.concat([shap_vals_df, curr_fold_df])
 
-#    shap_vals_df.to_csv(f'shap_20241114/shap_vals_df_{method}_features{num_feat}.csv')
+    shap_vals_df.to_csv(f'{file_prefix}shap_vals_df_{method}_features{num_feat}.csv')
 
     # Convert missing values to 0
     shap_vals_df_no_na = shap_vals_df.fillna(0)
