@@ -7,15 +7,18 @@ import seaborn as sns
 import scanpy as sc
 import shap
 
-from sklearn.model_selection import StratifiedGroupKFold, cross_validate, RandomizedSearchCV
+from sklearn import set_config
+from sklearn.svm import LinearSVC
+from sklearn.model_selection import StratifiedGroupKFold, cross_validate
 from sklearn.metrics import accuracy_score, confusion_matrix, ConfusionMatrixDisplay, f1_score, recall_score, precision_score,balanced_accuracy_score, matthews_corrcoef, roc_auc_score, average_precision_score
+
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.pipeline import Pipeline
 
 ### Classes
 
 # Custom estimator class incorporating feature selection
-class HVGBaseEstimator, TransformerMixin):
+class HVG(BaseEstimator, TransformerMixin):
   def __init__(self, top_n = 300):
     self.top_n = top_n
   def fit(self, X, y):
@@ -405,7 +408,7 @@ def calc_jaccard_coeff_btw_folds(method_list, num_feat_list, feat_dict, num_fold
                 # if curr_method == 'random_per_num':
                 #   curr_feat_1 = feat_dict[curr_method][i][curr_num_feat]
                 if curr_method == 'dge':
-                  curr_feat_1 = feat_dict[curr_method][i]['cancer'][:int(curr_num_feat/2)].append(feat_dict[curr_method][fold]['norm'][:int(curr_num_feat/2)]) 
+                  curr_feat_1 = feat_dict[curr_method][fold]['cancer'][:int(curr_num_feat/2)].append(feat_dict[curr_method][fold]['norm'][:int(curr_num_feat/2)]) 
                 else:
                   curr_feat_1 = feat_dict[curr_method][i][:curr_num_feat]
                 fold1_feat_set = set(curr_feat_1)
@@ -416,7 +419,7 @@ def calc_jaccard_coeff_btw_folds(method_list, num_feat_list, feat_dict, num_fold
                     # if curr_method == 'random_per_num':
                     #   curr_feat_2 = feat_dict[curr_method][j][curr_num_feat]
                     if curr_method == 'dge':
-                      curr_feat_2 = feat_dict[curr_method][j]['cancer'][:int(curr_num_feat/2)].append(feat_dict[curr_method][fold]['norm'][:int(curr_num_feat/2)]) 
+                      curr_feat_2 = feat_dict[curr_method][fold]['cancer'][:int(curr_num_feat/2)].append(feat_dict[curr_method][fold]['norm'][:int(curr_num_feat/2)]) 
                     else:
                       curr_feat_2 = feat_dict[curr_method][j][:curr_num_feat]
                     fold2_feat_set = set(curr_feat_2)
