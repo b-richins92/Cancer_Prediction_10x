@@ -464,11 +464,7 @@ def plot_feat_importance(adata, method, num_feat, feat_dict, shap_dict, folds_di
         curr_cells = X_index[index_lists['test']]
 
         # Get current set of features
-        # if method == 'random_per_num':
-        #   curr_feat = feat_dict[method][fold][num_feat]
         if method == 'dge':
-          # print(f'dge:')
-          # print(f'feat_dict[{method}][{fold}]: {feat_dict[method][fold]}')
           curr_feat = feat_dict[method][fold]['cancer'][:int(num_feat/2)].append(feat_dict[method][fold]['norm'][:int(num_feat/2)]) 
         else:
           curr_feat = feat_dict[method][fold][:num_feat]
@@ -478,35 +474,35 @@ def plot_feat_importance(adata, method, num_feat, feat_dict, shap_dict, folds_di
         curr_fold_df = pd.DataFrame(data = curr_shap,
                                     index = curr_cells,
                                     columns = curr_feat)
-#        display(curr_fold_df.head())
         # Concatenate dataframe to main dataframe - keep missing values as NaN?
         shap_vals_df = pd.concat([shap_vals_df, curr_fold_df])
 
-    shap_vals_df.to_csv(f'{file_prefix}shap_vals_df_{method}_features{num_feat}.csv')
+#    shap_vals_df.to_csv(f'{file_prefix}shap_vals_df_{method}_features{num_feat}.csv')
 
     # Convert missing values to 0
     shap_vals_df_no_na = shap_vals_df.fillna(0)
 
     # Calculate median and sort shap_vals_df by median
-    shap_var_sort = np.abs(shap_vals_df_no_na).median(axis=0).sort_values(ascending = False)
-    shap_vals_df_sort = shap_vals_df[shap_var_sort.index]
+    # shap_var_sort = np.abs(shap_vals_df_no_na).median(axis=0).sort_values(ascending = False)
+    # shap_vals_df_sort = shap_vals_df[shap_var_sort.index]
 
     # Subset anndata to same cells and features in SHAP value frame
     adata_sub_vals = adata[shap_vals_df.index, shap_vals_df.columns].to_df()
 
     # Create beeswarm SHAP plot sorted by highest absolute mean (missing values as 0s)
     fig = plt.figure() 
-    shap.summary_plot(shap_vals_df_no_na.values,adata_sub_vals, max_display = 10, #sort = False, 
-                      show = False)
-    fig.savefig(f'{file_prefix}mean/beeswarm_{method}_features{num_feat}.png', bbox_inches='tight')
+    shap.summary_plot(shap_vals_df_no_na.values,adata_sub_vals, max_display = 10, show = False)
+    fig.suptitle(f'Top 10 Features for method {method} with {num_feat} features', fontsize=16)
+    fig.ylabel('Top 10 features ordered by absolute mean', fontsize=13)
+    fig.savefig(f'{file_prefix}mean_beeswarm_{method}_features{num_feat}.png', bbox_inches='tight')
     plt.close(fig)
 
     # Create beeswarm SHAP plot sorted by highest absolute median (missing values as 0s)
-    fig = plt.figure() 
-    shap.summary_plot(shap_vals_df_sort.values,adata_sub_vals[shap_var_sort.index],
-                      max_display = 10, sort = False, 
-                      show = False)
-    fig.savefig(f'{file_prefix}median/beeswarm_{method}_features{num_feat}.png', bbox_inches='tight')
-    plt.close(fig)
+    # fig = plt.figure() 
+    # shap.summary_plot(shap_vals_df_sort.values,adata_sub_vals[shap_var_sort.index],
+    #                   max_display = 10, sort = False, 
+    #                   show = False)
+    # fig.savefig(f'{file_prefix}median/beeswarm_{method}_features{num_feat}.png', bbox_inches='tight')
+    # plt.close(fig)
     
     return shap_vals_df
