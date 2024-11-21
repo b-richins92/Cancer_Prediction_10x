@@ -12,24 +12,6 @@ from sklearn.svm import LinearSVC
 from sklearn.model_selection import StratifiedGroupKFold, cross_validate
 from sklearn.metrics import accuracy_score, confusion_matrix, ConfusionMatrixDisplay, f1_score, recall_score, precision_score,balanced_accuracy_score, matthews_corrcoef, roc_auc_score, average_precision_score
 
-from sklearn.base import BaseEstimator, TransformerMixin
-from sklearn.pipeline import Pipeline
-
-### Classes
-
-# Custom estimator class incorporating feature selection
-class HVG(BaseEstimator, TransformerMixin):
-  def __init__(self, top_n = 300):
-    self.top_n = top_n
-  def fit(self, X, y):
-    # Calculate most variable features using Pearson residuals
-    hvg_df = sc.experimental.pp.highly_variable_genes(adata, flavor = 'pearson_residuals', n_top_genes = adata.n_vars,
-                                                      layer = 'raw', inplace = False)
-    hvg_df = hvg_df.sort_values(by = 'highly_variable_rank')
-    self.top_feat = hvg_df.index[:top_n]
-  def transform(self, x):
-    return x[:, self.top_feat].X
-
 ### Functions
 
 # Convenience method for computing the size of objects
@@ -62,8 +44,10 @@ def create_adata_train(raw_counts_path, norm_counts_path, orig_labels_path):
   # Based on extension, choose appropriate function
     # If folder - use sc.read_10x_mtx
     # If .txt, use read_text
-  
-  raw_counts_ann = sc.read_10x_mtx(raw_counts_path, gex_only = False)
+  if (raw_counts_path.endswith('.csv.gz') | raw_counts_path.endswith('.csv')):
+    raw_counts_ann = sc.read_csv(raw_counts_path)
+  else:
+    raw_counts_ann = sc.read_10x_mtx(raw_counts_path, gex_only = False)
   raw_counts_ann.obs['in_tisch'] = raw_counts_ann.obs.index.isin(adata_norm.obs_names)
   raw_counts_ann.var['in_tisch'] = raw_counts_ann.var.index.isin(adata_norm.var_names)
   raw_subset = raw_counts_ann[raw_counts_ann.obs['in_tisch'], raw_counts_ann.var['in_tisch']].copy()
