@@ -59,6 +59,10 @@ def create_adata_train(raw_counts_path, norm_counts_path, orig_labels_path):
   adata_norm.obs = pd.merge(adata_norm.obs, orig_meta, left_index = True, right_index = True, how = 'inner')
  
   # Load in raw counts into AnnData object - subset using TISCH cells and genes
+  # Based on extension, choose appropriate function
+    # If folder - use sc.read_10x_mtx
+    # If .txt, use read_text
+  
   raw_counts_ann = sc.read_10x_mtx(raw_counts_path, gex_only = False)
   raw_counts_ann.obs['in_tisch'] = raw_counts_ann.obs.index.isin(adata_norm.obs_names)
   raw_counts_ann.var['in_tisch'] = raw_counts_ann.var.index.isin(adata_norm.var_names)
