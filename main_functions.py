@@ -42,8 +42,11 @@ def create_adata_train(raw_counts_path, norm_counts_path, orig_labels_path):
  
   # Load in raw counts into AnnData object - subset using TISCH cells and genes
   if (raw_counts_path.endswith('.csv.gz') | raw_counts_path.endswith('.csv')):
-    raw_counts_df = pd.read_csv(raw_counts_path)
+    raw_counts_df = pd.read_csv(raw_counts_path, index_col = 0)
+    print(f'raw_counts_df:')
+    display(raw_counts_df.head())
     raw_counts_ann = sc.AnnData(raw_counts_df)
+    print(f'raw_counts_ann: {raw_counts_ann}')
   else:
     raw_counts_ann = sc.read_10x_mtx(raw_counts_path, gex_only = False)
   raw_counts_ann.obs['in_tisch'] = raw_counts_ann.obs.index.isin(adata_norm.obs_names)
