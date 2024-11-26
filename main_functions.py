@@ -266,11 +266,25 @@ def train_test_model(clf, train_df, train_labels, test_df, test_labels, features
     Output: Trained model. Print metrics
   """
 
+  # Get subsets of train_df and test_df based on features present in 'features'
+  train_df_sub = train_df[features]
+  test_df_sub = test_df[test_df.columns[test_df.columns.isin(features)]]
+  print(f'train_df_sub.shape: {train_df_sub.shape}, test_df_sub.shape: {test_df_sub.shape}')
+
+  # Concatenate, then separate into train and test so same features are present in both
+  train_df_sub['set'] = 'train'
+  test_df_sub['set'] = 'test'
+  train_test_combined = pd.concat([train_df_sub, test_df_sub])
+
+  train_df_sub_v2 = train_test_combined[train_test_combined['set'] == 'train'].drop('set', axis = 1)
+  test_df_sub_v2 = train_test_combined[train_test_combined['set'] == 'test'].drop('set', axis = 1)
+  print(f'train_df_sub_v2.shape: {train_df_sub_v2.shape}, test_df_sub_v2.shape: {test_df_sub_v2.shape}')
+  
   # Train model
-  clf.fit(train_df[features], train_labels)
+  clf.fit(train_df_sub_v2[features], train_labels)
 
   # Test model
-  y_pred = clf.predict(test_df[features])
+  y_pred = clf.predict(test_df_sub_v2[features])
 
   recall = recall_score(test_labels, y_pred)
   precision = precision_score(test_labels, y_pred)
