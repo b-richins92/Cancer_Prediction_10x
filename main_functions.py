@@ -272,12 +272,12 @@ def train_test_model(clf, train_df, train_labels, test_df, test_labels, features
   print(f'train_df_sub.shape: {train_df_sub.shape}, test_df_sub.shape: {test_df_sub.shape}')
 
   # Concatenate, then separate into train and test so same features are present in both
-  train_df_sub['set'] = 'train'
-  test_df_sub['set'] = 'test'
-  train_test_combined = pd.concat([train_df_sub, test_df_sub])
+  # train_df_sub['set'] = 'train'
+  # test_df_sub['set'] = 'test'
+  train_test_combined = pd.concat([train_df_sub, test_df_sub]).fillna(0)
 
-  train_df_sub_v2 = train_test_combined[train_test_combined['set'] == 'train'].drop('set', axis = 1)
-  test_df_sub_v2 = train_test_combined[train_test_combined['set'] == 'test'].drop('set', axis = 1)
+  train_df_sub_v2 = train_test_combined.iloc[0:len(train_df_sub)]
+  test_df_sub_v2 = train_test_combined.iloc[len(train_df_sub):]
   print(f'train_df_sub_v2.shape: {train_df_sub_v2.shape}, test_df_sub_v2.shape: {test_df_sub_v2.shape}')
   
   # Train model
