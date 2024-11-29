@@ -320,12 +320,17 @@ def make_line_plots_metrics(results_df):
                                       aggfunc=['mean', 'std'])
   
     # Plot 1 figure with all metrics versus number of features
-    g1 = sns.catplot(
-        data=results_df_tall,
-        x='num_features', y='score', col='metric',
-        hue = 'feat_sel_type', col_wrap = 4, kind='point', capsize = 0.2,
-        sharex = False, alpha = 0.7
-    )
+    sns.set_theme(style='whitegrid')
+    with sns.plotting_context(context = "notebook", font_scale=1.25):
+        g1 = sns.catplot(
+            data=results_df,
+            x='num_features', y='score', col='metric',
+            hue = 'feat_sel_type', col_wrap = 2, kind='point', capsize = 0.2,
+            sharex = False, alpha = 0.7#, legend = False
+        )
+
+    g1.set_xticklabels(rotation=45)
+    plt.show()
 
     return results_df_pivot, g1
 
