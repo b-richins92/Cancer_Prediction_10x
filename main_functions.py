@@ -326,10 +326,18 @@ def make_line_plots_metrics(results_df):
             data=results_df,
             x='num_features', y='score', col='metric',
             hue = 'feat_sel_type', col_wrap = 2, kind='point', capsize = 0.2,
-            sharex = False, alpha = 0.7#, legend = False
+            sharex = False, alpha = 0.7
         )
 
     g1.set_xticklabels(rotation=45)
+    g1.set_axis_labels('Number of features', 'Score')
+
+    sns.move_legend(g1, "upper right", bbox_to_anchor=(1, 1))
+    g1.legend.get_title().set_text('Feature selection method')
+    for text in g1.legend.texts:
+        text.set_fontsize(14)
+
+    plt.subplots_adjust(bottom=-0.01)
     plt.show()
 
     return results_df_pivot, g1
