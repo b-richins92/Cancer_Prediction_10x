@@ -46,13 +46,13 @@ def create_adata(raw_counts_path, norm_counts_path, orig_labels_path):
         raw_counts_ann = sc.AnnData(raw_counts_df)
     else:
         raw_counts_ann = sc.read_10x_mtx(raw_counts_path, gex_only = False)
-        # Subset raw counts using cells and genes from TISCH dataset
-        raw_counts_ann.obs['in_tisch'] = raw_counts_ann.obs.index.isin(adata_norm.obs_names)
-        raw_counts_ann.var['in_tisch'] = raw_counts_ann.var.index.isin(adata_norm.var_names)
-        raw_subset = raw_counts_ann[raw_counts_ann.obs['in_tisch'], raw_counts_ann.var['in_tisch']].copy()
-    
-    # Add in labels to raw_subset
-    raw_subset.obs = pd.merge(raw_subset.obs, orig_meta, left_index = True, right_index = True, how = 'inner')
+
+    # Subset raw counts using cells and genes from TISCH dataset
+    raw_counts_ann.obs['in_tisch'] = raw_counts_ann.obs.index.isin(adata_norm.obs_names)
+    raw_counts_ann.var['in_tisch'] = raw_counts_ann.var.index.isin(adata_norm.var_names)
+    raw_subset = raw_counts_ann[raw_counts_ann.obs['in_tisch'], raw_counts_ann.var['in_tisch']].copy()
+    raw_subset.obs = raw_subset.obs.drop(columns = ['in_tisch'])
+    raw_subset.var = raw_subset.var.drop(columns = ['in_tisch'])
     
     # Ensure shape of both normalized and raw matrices are the same
     adata_norm = adata_norm[raw_subset.obs_names, raw_subset.var_names].copy()
