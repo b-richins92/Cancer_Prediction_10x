@@ -9,6 +9,21 @@ Project goals:
 ## Model requirements
 ```pip install -r requirements.txt```
 
+## Data Access Statement
+The count matrices were obtained from the public, free to use TISCH2 Database http://tisch.comp-genomics.org/gallery/?cancer=BRCA&celltype=Malignant&species=Human
+The link contains download links to many breast cancer files. The ones we used are named below
+
+Dataset names:
+  * Training - BRCA_EMTAB8107
+  * Validation - BRCA_GSE148673
+  * Test Set - BRCA_GSE150660
+
+While the datasets include the target variable, we felt that the corresponding papers of the datasets provided links to labels that were much more accurate.
+...(include how to download labels)
+
+All datasets are public and all licenses are respected.
+
+
 ## Dataset overview
 
 
