@@ -29,11 +29,10 @@ All datasets are public and all licenses are respected.
 
 ## Code structure
 - main_functions.py: Contains helper functions used in notebooks (ex. loading data, training models)
-- Notebook 0 (): Loading datasets, dataset exploration and statistics
-- Notebook 1 (Baseline_CV.ipynb): Baseline model comparison on training set
-- Notebook 2 (Baseline_SHAP.ipynb): Feature importance on XGBoost baseline model with all features
-- Notebook 2 (differential_gene_expression.ipynb): Differential gene expression
-- Notebook 3 (): Highly variable genes - metrics comparison, feature importance
-- Notebook 4 (HVG_and_DGE_GridsearchCV.ipynb): Model tuning with feature selection
-- Notebook 5: Testing final model with hold-out datasets
-- Notebook 6: Comparison with ikarus
+- Notebook 0 (0_create_datasets_stats.ipynb): Loading datasets, dataset exploration and statistics
+- Notebook 1 (1_Baseline_CV.ipynb): Baseline model comparison on training set
+- Notebook 2 (2_Baseline_SHAP.ipynb): Feature importance on XGBoost baseline model with all features
+- Notebook 3 (3_differential_gene_expression.ipynb): Differential gene expression
+- Notebook 4 (4_highly_variable_genes.ipynb): Highly variable genes - metrics comparison, feature importance
+- Notebook 5 (5_HVG_and_DGE_GridsearchCV.ipynb): Model tuning with feature selection and testing with final model on hold-out datasets
+- Notebook 6 (6_ikarus.ipynb): Comparison with ikarus
