@@ -10,7 +10,8 @@ Project goals:
 ```pip install -r requirements.txt```
 
 ## Data Access Statement
-The count matrices were obtained from the public, free to use TISCH2 Database http://tisch.comp-genomics.org/gallery/?cancer=BRCA&celltype=Malignant&species=Human
+The count matrices were obtained from the public, free to use [TISCH2 Database](http://tisch.comp-genomics.org/gallery/?cancer=BRCA&celltype=Malignant&species=Human).
+We filtered for datasets for breast cancer containing cells labeled as "malignant" by TISCH and limited to human specimens.
 The link contains download links to many breast cancer files. The ones we used are named below
 
 Dataset names:
