@@ -214,15 +214,15 @@ def train_feat_loop_cv(clf, adata, groups_label, num_feat_list, feat_method_list
             for curr_num_feat in num_feat_list:
                 # For first iteration of number of features, create empty dictionary to store SHAP values
                 if i == 0:
-                  shap_results[curr_method][curr_num_feat] = {}
+                    shap_results[curr_method][curr_num_feat] = {}
               
                 # Extract top features depending on method
                 if curr_method == 'dge':
-                  # For differential gene expression, half of features will come from each list
-                  num_dges = int(curr_num_feat/2)
-                  curr_feat = feature_order['cancer'][:num_dges].append(feature_order['norm'][:num_dges])
+                    # For differential gene expression, half of features will come from each list
+                    num_dges = int(curr_num_feat/2)
+                    curr_feat = feature_order['cancer'][:num_dges].append(feature_order['norm'][:num_dges])
                 else:
-                  curr_feat = feature_order[:curr_num_feat]
+                    curr_feat = feature_order[:curr_num_feat]
         
                 # Train model
                 clf.fit(X_train[:, curr_feat].X, y_train)
