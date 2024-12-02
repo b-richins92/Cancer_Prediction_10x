@@ -86,15 +86,20 @@ def get_diff_exp_genes(adata_obj, corr_method = 'bonferroni', pval_cutoff = 0.05
     
     adata_copy = adata_obj.copy()
     adata_copy.obs['orig_cancer_label'] = pd.Categorical(adata_copy.obs['orig_cancer_label'])
+    
+    # Remove genes expressed in no cells to avoid error with dividing by stdev = 0 in rank_genes_groups below
+    adata_copy = sc.pp.filter_genes(adata_copy, min_cells=1)
+
+    # Calculate differentially expressed genes
     adata_deg = sc.tl.rank_genes_groups(adata_copy, groupby='orig_cancer_label', method='wilcoxon',
-                                      tie_correct = True, corr_method = corr_method,
-                                      pts = True, copy = True, layer = 'norm')
+                                        tie_correct = True, corr_method = corr_method,
+                                        pts = True, copy = True, layer = 'norm')
     adata_deg_df = sc.get.rank_genes_groups_df(adata_deg, group = None,
-                                             pval_cutoff = pval_cutoff, log2fc_min = log2fc_min)
+                                               pval_cutoff = pval_cutoff, log2fc_min = log2fc_min)
     adata_deg_df_filt = adata_deg_df[adata_deg_df['pct_nz_group'] > 0.1]
     
     # Get ordered lists of genes - one for cancer, one for normal
-    adata_deg_df_filt['group'] = adata_deg_df_filt['group'].astype('int')
+    adata_deg_df_filt = adata_deg_df_filt.astype({'group':'int'})
     adata_deg_df_filt = adata_deg_df_filt.set_index('names')
     adata_deg_cancer = adata_deg_df_filt[adata_deg_df_filt['group']== 0].index
     adata_deg_norm = adata_deg_df_filt[adata_deg_df_filt['group']== 1].index
@@ -117,16 +122,16 @@ def get_hvgs(adata, method):
     
     # Use experimental module if 'pearson_residuals' (with raw counts), otherwise use standard method
     if method == 'pearson_residuals':
-        hvg_df = sc.experimental.pp.highly_variable_genes(adata, flavor = 'pearson_residuals',
+        hvg_df = sc.experimental.pp.highly_variable_genes(adata.copy(), flavor = 'pearson_residuals',
                                                       n_top_genes = num_genes,
                                                       layer = 'raw', inplace = False)
     elif method == 'seurat_v3':
-        hvg_df = sc.pp.highly_variable_genes(adata, flavor = method,
+        hvg_df = sc.pp.highly_variable_genes(adata.copy(), flavor = method,
                                          n_top_genes = num_genes,
                                          layer = 'raw', inplace = False)
     elif method in ['seurat', 'cell_ranger']:
-        hvg_df = sc.pp.highly_variable_genes(adata, flavor = method,
-                                         n_top_genes = num_genes,
+        hvg_df = sc.pp.highly_variable_genes(adata.copy(), flavor = method,
+                                       #  n_top_genes = num_genes,
                                          layer = 'norm', inplace = False)
     else:
         raise ValueError("String must be one of four values: " + \
@@ -137,7 +142,7 @@ def get_hvgs(adata, method):
         hvg_df = hvg_df.sort_values(by = 'highly_variable_rank')
     else:
         hvg_df = hvg_df.sort_values(by = 'dispersions_norm', ascending = False)
-    
+
     return hvg_df.index
 
 # Function with cross-validation applied to training dataset
@@ -175,6 +180,7 @@ def train_feat_loop_cv(clf, adata, groups_label, num_feat_list, feat_method_list
     sgkf = StratifiedGroupKFold(n_splits=k_fold, shuffle = True, random_state = random_state)
     # Loop through each fold
     for i, (train_index, test_index) in enumerate(sgkf.split(X, y, groups_col)):
+        print(f'Fold i: {i}')
         # Set up training and test folds
         X_train, X_test = X[train_index], X[test_index]
         y_train, y_test = y.iloc[train_index], y.iloc[test_index]
@@ -184,6 +190,7 @@ def train_feat_loop_cv(clf, adata, groups_label, num_feat_list, feat_method_list
     
         # Loop through all feature selection methods
         for curr_method in feat_method_list:
+            print(f'curr_method: {curr_method}')
             # For first iteration of method, create empty dictionary to store SHAP values
             if i == 0:
                 shap_results[curr_method] = {}
