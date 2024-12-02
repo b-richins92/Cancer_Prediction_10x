@@ -1,5 +1,5 @@
 # Predicting Cancer from Breast Cancer Single-Cell RNA Sequencing Data
-
+SIADS 699 Fall 2024
 Team Members: Shriya Goel, Gretchen Lam, Bryan Richins
 
 Project goals:
