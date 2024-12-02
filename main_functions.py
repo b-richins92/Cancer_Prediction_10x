@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+from pathlib import Path
 import matplotlib.pyplot as plt
 import seaborn as sns
 import scanpy as sc
@@ -88,7 +89,7 @@ def get_diff_exp_genes(adata_obj, corr_method = 'bonferroni', pval_cutoff = 0.05
     adata_copy.obs['orig_cancer_label'] = pd.Categorical(adata_copy.obs['orig_cancer_label'])
     
     # Remove genes expressed in no cells to avoid error with dividing by stdev = 0 in rank_genes_groups below
-    adata_copy = sc.pp.filter_genes(adata_copy, min_cells=1)
+    sc.pp.filter_genes(adata_copy, min_cells=1)
 
     # Calculate differentially expressed genes
     adata_deg = sc.tl.rank_genes_groups(adata_copy, groupby='orig_cancer_label', method='wilcoxon',
@@ -180,7 +181,6 @@ def train_feat_loop_cv(clf, adata, groups_label, num_feat_list, feat_method_list
     sgkf = StratifiedGroupKFold(n_splits=k_fold, shuffle = True, random_state = random_state)
     # Loop through each fold
     for i, (train_index, test_index) in enumerate(sgkf.split(X, y, groups_col)):
-        print(f'Fold i: {i}')
         # Set up training and test folds
         X_train, X_test = X[train_index], X[test_index]
         y_train, y_test = y.iloc[train_index], y.iloc[test_index]
@@ -190,7 +190,6 @@ def train_feat_loop_cv(clf, adata, groups_label, num_feat_list, feat_method_list
     
         # Loop through all feature selection methods
         for curr_method in feat_method_list:
-            print(f'curr_method: {curr_method}')
             # For first iteration of method, create empty dictionary to store SHAP values
             if i == 0:
                 shap_results[curr_method] = {}
@@ -329,23 +328,28 @@ def make_line_plots_metrics(results_df):
   
     # Plot 1 figure with all metrics versus number of features
     sns.set_theme(style='whitegrid')
-    with sns.plotting_context(context = "notebook", font_scale=1.25):
+    with sns.plotting_context(context = "notebook"):
         g1 = sns.catplot(
-            data=results_df,
+            data=results_df_tall,
             x='num_features', y='score', col='metric',
             hue = 'feat_sel_type', col_wrap = 2, kind='point', capsize = 0.2,
-            sharex = False, alpha = 0.7
+            sharex = False, alpha = 0.7, height = 6, aspect = 0.75
         )
 
-    g1.set_xticklabels(rotation=45)
-    g1.set_axis_labels('Number of features', 'Score')
-
-    sns.move_legend(g1, "upper right", bbox_to_anchor=(1, 1))
+    g1.set_xticklabels(rotation=45, fontsize = 18)
+    g1.tick_params(axis='y', labelsize = 18)
+    g1.set_axis_labels('Number of features', 'Score', fontsize = 20)
+    
+    g1.fig.suptitle('Metrics comparison for feature selection methods', fontsize = 25)
+    g1.set_titles(size = 22)
+    
+    sns.move_legend(g1, 'upper left', bbox_to_anchor=(1, 1))
     g1.legend.get_title().set_text('Feature selection method')
-    for text in g1.legend.texts:
-        text.set_fontsize(14)
-
-    plt.subplots_adjust(bottom=-0.01)
+    plt.setp(g1.legend.get_texts(), fontsize='18')
+    plt.setp(g1.legend.get_title(), fontsize='20')
+    
+    g1.fig.tight_layout()
+    
     plt.show()
 
     return results_df_pivot, g1
@@ -442,23 +446,48 @@ def plot_feat_importance(adata, method, num_feat, feat_dict, shap_dict, folds_di
         curr_fold_df = pd.DataFrame(data = curr_shap,
                                     index = curr_cells,
                                     columns = curr_feat)
-        # Concatenate dataframe to main dataframe - keep missing values as NaN?
-        shap_vals_df = pd.concat([shap_vals_df, curr_fold_df])
+        # Concatenate dataframe to main dataframe - convert missing values to 0
+        shap_vals_df = pd.concat([shap_vals_df, curr_fold_df]).fillna(0)
 
+    # Create directory if not already created
+    Path(file_prefix).mkdir(parents=True, exist_ok=True)
     shap_vals_df.to_csv(f'{file_prefix}shap_vals_df_{method}_features{num_feat}.csv')
 
     # Convert missing values to 0
-    shap_vals_df_no_na = shap_vals_df.fillna(0)
+#    shap_vals_df_no_na = shap_vals_df.fillna(0)
 
     # Subset anndata to same cells and features in SHAP value frame
     adata_sub_vals = adata[shap_vals_df.index, shap_vals_df.columns].to_df()
 
     # Create beeswarm SHAP plot sorted by highest absolute mean (missing values as 0s)
-    fig = plt.figure() 
-    shap.summary_plot(shap_vals_df_no_na.values,adata_sub_vals, max_display = 10, show = False)
+    shap.summary_plot(shap_vals_df.values,adata_sub_vals, max_display = 10, show = False)
     fig.suptitle(f'Top 10 Features for method {method} with {num_feat} features', fontsize=16)
     fig.ylabel('Top 10 features ordered by absolute mean', fontsize=13)
     fig.savefig(f'{file_prefix}mean_beeswarm_{method}_features{num_feat}.png', bbox_inches='tight')
-    plt.close(fig)
+
+    # New section
+    shap.summary_plot(shap_df.values,adata_sub_vals, max_display = 10, show = False, plot_size=[7.5,5])
+    
+    # Get the current figure and axes objects.
+    fig, ax = plt.gcf(), plt.gca()
+
+    # Adjust label text and size
+    ax.set_xlabel("SHAP value (impact on model output)", fontsize=18)
+    ax.set_ylabel("Top 10 features by absolute mean", fontsize=18)
+    ax.set_title(f'Top 10 features for method {method} with {num_feat} features', fontsize=20, pad = 20)
+    ax.tick_params(axis='both', which='major', labelsize=16)
+    
+    #clb=plt.colorbar()
+    #clb.ax.tick_params(labelsize=14)
+    #clb.ax.set_title('Your Label',fontsize=8)
+    
+    # Get colorbar
+    cb_ax = fig.axes[1] 
+    
+    # Modifying color bar parameters
+    cb_ax.tick_params(labelsize=15)
+    cb_ax.set_ylabel("Feature value", fontsize=20)
+    
+    #fig.savefig(f'mean_beeswarm_{method}_features{num_feat}.png', bbox_inches='tight')
     
     return shap_vals_df
