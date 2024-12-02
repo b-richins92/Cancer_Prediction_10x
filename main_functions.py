@@ -406,7 +406,7 @@ def calc_jaccard_coeff(method_list, num_feat_list, feat_dict, num_folds):
     return jaccard_df
 
 # Generate feature importance SHAP plots for a given method and number of features across folds
-def plot_feat_importance(adata, method, num_feat, feat_dict, shap_dict, folds_dict, file_prefix):
+def plot_feat_importance(adata, method, num_feat, feat_dict, shap_dict, folds_dict):
     """
     Purpose: Consolidates SHAP values across folds and generates beeswarm SHAP plot for feature importance
     Inputs:
@@ -416,7 +416,6 @@ def plot_feat_importance(adata, method, num_feat, feat_dict, shap_dict, folds_di
         - feat_dict: Dictionary containing order of features for each method and fold
         - shap_dict: Dictionary containing SHAP values for each method, number of features, and fold
         - folds_dict: Dictionary containing indices of train and test samples by fold
-        - file_prefix: String for file path to use for saving
     Outputs:
         - Dataframe of SHAP values (saved)
         - SHAP plot (saved)
@@ -435,7 +434,7 @@ def plot_feat_importance(adata, method, num_feat, feat_dict, shap_dict, folds_di
 
         # Get current set of features
         if method == 'dge':
-            num_dges = int(curr_num_feat/2)
+            num_dges = int(num_feat/2)
             curr_feat = feat_dict[method][fold]['cancer'][:num_dges].append(
                           feat_dict[method][fold]['norm'][:num_dges]) 
         else:
@@ -449,24 +448,11 @@ def plot_feat_importance(adata, method, num_feat, feat_dict, shap_dict, folds_di
         # Concatenate dataframe to main dataframe - convert missing values to 0
         shap_vals_df = pd.concat([shap_vals_df, curr_fold_df]).fillna(0)
 
-    # Create directory if not already created
-    Path(file_prefix).mkdir(parents=True, exist_ok=True)
-    shap_vals_df.to_csv(f'{file_prefix}shap_vals_df_{method}_features{num_feat}.csv')
-
-    # Convert missing values to 0
-#    shap_vals_df_no_na = shap_vals_df.fillna(0)
-
     # Subset anndata to same cells and features in SHAP value frame
     adata_sub_vals = adata[shap_vals_df.index, shap_vals_df.columns].to_df()
 
     # Create beeswarm SHAP plot sorted by highest absolute mean (missing values as 0s)
-    shap.summary_plot(shap_vals_df.values,adata_sub_vals, max_display = 10, show = False)
-    fig.suptitle(f'Top 10 Features for method {method} with {num_feat} features', fontsize=16)
-    fig.ylabel('Top 10 features ordered by absolute mean', fontsize=13)
-    fig.savefig(f'{file_prefix}mean_beeswarm_{method}_features{num_feat}.png', bbox_inches='tight')
-
-    # New section
-    shap.summary_plot(shap_df.values,adata_sub_vals, max_display = 10, show = False, plot_size=[7.5,5])
+    shap.summary_plot(shap_vals_df.values,adata_sub_vals, max_display = 10, show = False, plot_size=[7.5,5])
     
     # Get the current figure and axes objects.
     fig, ax = plt.gcf(), plt.gca()
@@ -477,17 +463,13 @@ def plot_feat_importance(adata, method, num_feat, feat_dict, shap_dict, folds_di
     ax.set_title(f'Top 10 features for method {method} with {num_feat} features', fontsize=20, pad = 20)
     ax.tick_params(axis='both', which='major', labelsize=16)
     
-    #clb=plt.colorbar()
-    #clb.ax.tick_params(labelsize=14)
-    #clb.ax.set_title('Your Label',fontsize=8)
-    
     # Get colorbar
     cb_ax = fig.axes[1] 
     
     # Modifying color bar parameters
     cb_ax.tick_params(labelsize=15)
     cb_ax.set_ylabel("Feature value", fontsize=20)
+    plt.show()
+    plt.close(fig)
     
-    #fig.savefig(f'mean_beeswarm_{method}_features{num_feat}.png', bbox_inches='tight')
-    
-    return shap_vals_df
+    return shap_vals_df, fig
