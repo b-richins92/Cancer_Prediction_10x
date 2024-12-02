@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import scanpy as sc
 import shap
+import textwrap
 
 from sklearn.model_selection import StratifiedGroupKFold, cross_validate
 from sklearn.metrics import accuracy_score, confusion_matrix, ConfusionMatrixDisplay, f1_score, recall_score, precision_score
@@ -460,7 +461,9 @@ def plot_feat_importance(adata, method, num_feat, feat_dict, shap_dict, folds_di
     # Adjust label text and size
     ax.set_xlabel("SHAP value (impact on model output)", fontsize=18)
     ax.set_ylabel("Top 10 features by absolute mean", fontsize=18)
-    ax.set_title(f'Top 10 features for method {method} with {num_feat} features', fontsize=20, pad = 20)
+    ax.set_title(textwrap.fill(f'Top 10 features for method {method} with {num_feat} features',
+                               width = 40, break_long_words = False),
+                 fontsize=20, pad = 20)
     ax.tick_params(axis='both', which='major', labelsize=16)
     
     # Get colorbar
