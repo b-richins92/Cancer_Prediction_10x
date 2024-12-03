@@ -14,7 +14,7 @@ The count matrices were obtained from the public, free to use [TISCH2 Database](
 We filtered for datasets for breast cancer containing cells labeled as "malignant" by TISCH and limited to human specimens.
 The link contains download links to many breast cancer files. The ones we used are named below
 
-Dataset names: (Note: although the file name for Test Set 1 is val.h5ad, it was treated more like a test set than a validation set)
+Dataset names: (Note: although the file name for Test Set 1 is val.h5ad, it was treated more like a test set than a validation set, and was referred to as test set 1 in the report)
   * Training - BRCA_EMTAB8107 (filename: 'train.h5ad')
   * Test Set 1 - BRCA_GSE148673 (filename: 'val.h5ad')
   * Test Set 2 - BRCA_GSE150660 (filename: 'test.h5ad')
