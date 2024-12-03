@@ -37,3 +37,4 @@ All datasets are public and all licenses are respected.
 - Notebook 4 (4_highly_variable_genes.ipynb): Highly variable genes - metrics comparison, feature importance
 - Notebook 5 (5_HVG_and_DGE_GridsearchCV.ipynb): Model tuning with feature selection and testing with final model on hold-out datasets
 - Notebook 6 (6_ikarus.ipynb): Comparison with ikarus
+- Notebook 7 (7_compare_gene_sig.ipynb): Compare features from notebook 4 with known gene signatures from the literature
