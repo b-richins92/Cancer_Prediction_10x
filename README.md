@@ -7,17 +7,17 @@ Project goals:
 - Identify cancer biomarkers important for cancer prediction
 
 ## Model requirements
+Install using the following command in command prompt:
 ```pip install -r requirements.txt```
 
 ## Data Access Statement
-The count matrices were obtained from the public, free to use [TISCH2 Database](http://tisch.comp-genomics.org/gallery/?cancer=BRCA&celltype=Malignant&species=Human).
+The count matrices were obtained from the public, free to use [TISCH2 Database](http://tisch.comp-genomics.org/gallery/?cancer=BRCA&celltype=Malignant&species=Human), which provides access to tumor-related scRNAseq datasets.
 We filtered for datasets for breast cancer containing cells labeled as "malignant" by TISCH and limited to human specimens.
-The link contains download links to many breast cancer files. The ones we used are named below
 
 Dataset names:
   * Training - BRCA_EMTAB8107
-  * Validation - BRCA_GSE148673
-  * Test Set - BRCA_GSE150660
+  * Test Set 1 (also referred to as "validation") - BRCA_GSE148673
+  * Test Set 2 (also referred to as "test") - BRCA_GSE150660
 
 While the datasets include the target variable, we felt that the corresponding papers of the datasets provided links to labels that were much more accurate.
 ...(include how to download labels)
