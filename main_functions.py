@@ -297,6 +297,7 @@ def train_test_model(clf, train_df, train_labels, test_df, test_labels, features
   
     metrics_df = pd.DataFrame({'recall': [recall], 'precision': [precision],
                                'f1': [f1], 'accuracy': [accuracy]})
+    metrics_df = metrics_df.round(3)
   
     print(f'# cells in training: {len(train_df)}, # cells in test: {len(test_df)}')
     print(conf_matrix)
