@@ -261,50 +261,48 @@ def train_feat_loop_cv(clf, adata, groups_label, num_feat_list, feat_method_list
 
 # Trains model with list of features, and scores test dataset with same features
 def train_test_model(clf, train_df, train_labels, test_df, test_labels, features):
-  """
-    Purpose: Trains and tests model given features and datasets
-    Inputs:
-      - clf: Classifier
-      - train_df: Training dataset
-      - train_labels: Training labels
-      - test_df: Test dataset
-      - test_labels: Test labels
-      - features: List of features
-    Output: Trained model. Print metrics
-  """
-
-  # Get subsets of train_df and test_df based on features present in 'features'
-  train_df_sub = train_df[features]
-  test_df_sub = test_df[test_df.columns[test_df.columns.isin(features)]]
-
-  # Concatenate, then separate into train and test so same features are present in both
-  train_test_combined = pd.concat([train_df_sub, test_df_sub]).fillna(0)
-
-  train_df_sub_v2 = train_test_combined.iloc[0:len(train_df_sub)]
-  test_df_sub_v2 = train_test_combined.iloc[len(train_df_sub):]
+    """
+      Purpose: Trains and tests model given features and datasets
+      Inputs:
+        - clf: Classifier
+        - train_df: Training dataset
+        - train_labels: Training labels
+        - test_df: Test dataset
+        - test_labels: Test labels
+        - features: List of features
+      Output: Trained model. Print metrics
+    """
   
-  # Train model
-  clf.fit(train_df_sub_v2[features], train_labels)
-
-  # Test model
-  y_pred = clf.predict(test_df_sub_v2[features])
-
-  recall = recall_score(test_labels, y_pred)
-  precision = precision_score(test_labels, y_pred)
-  accuracy = accuracy_score(test_labels, y_pred)
-  f1 = f1_score(test_labels, y_pred)
-  conf_matrix = confusion_matrix(test_labels, y_pred)
-
-  metrics_df = pd.DataFrame({'recall': [recall],
-                             'precision': [precision],
-                             'accuracy': [accuracy],
-                             'f1': [f1]})
-
-  print(f'# cells in training: {len(train_df)}, # cells in test: {len(test_df)}')
-  print(conf_matrix)
-  display(metrics_df)
-
-  return metrics_df, conf_matrix
+    # Get subsets of train_df and test_df based on features present in 'features'
+    train_df_sub = train_df[features]
+    test_df_sub = test_df[test_df.columns[test_df.columns.isin(features)]]
+  
+    # Concatenate, then separate into train and test so same features are present in both
+    train_test_combined = pd.concat([train_df_sub, test_df_sub]).fillna(0)
+  
+    train_df_sub_v2 = train_test_combined.iloc[0:len(train_df_sub)]
+    test_df_sub_v2 = train_test_combined.iloc[len(train_df_sub):]
+    
+    # Train model
+    clf.fit(train_df_sub_v2[features], train_labels)
+  
+    # Test model
+    y_pred = clf.predict(test_df_sub_v2[features])
+  
+    recall = recall_score(test_labels, y_pred)
+    precision = precision_score(test_labels, y_pred)
+    accuracy = accuracy_score(test_labels, y_pred)
+    f1 = f1_score(test_labels, y_pred)
+    conf_matrix = confusion_matrix(test_labels, y_pred)
+  
+    metrics_df = pd.DataFrame({'recall': [recall], 'precision': [precision],
+                               'f1': [f1], 'accuracy': [accuracy]})
+  
+    print(f'# cells in training: {len(train_df)}, # cells in test: {len(test_df)}')
+    print(conf_matrix)
+    display(metrics_df)
+  
+    return metrics_df, conf_matrix
 
 # Generate line plots of metrics from train_feat_loop_cv
 def make_line_plots_metrics(results_df):
