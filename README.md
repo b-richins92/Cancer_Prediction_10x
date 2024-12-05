@@ -1,5 +1,6 @@
 # Predicting Cancer from Breast Cancer Single-Cell RNA Sequencing Data
 SIADS 699 Fall 2024
+
 Team Members: Shriya Goel, Gretchen Lam, Bryan Richins
 
 Project goals:
@@ -19,14 +20,14 @@ Dataset names:
   * Test Set 1 - BRCA_GSE148673 (filename: 'test1.h5ad')
   * Test Set 2 - BRCA_GSE150660 (filename: 'test2.h5ad')
 
-While the datasets include the target variable, we felt that the corresponding papers of the datasets provided links to labels that were much more accurate.
-...(include how to download labels)
+We used labels from the original datasets rather than those provided by TISCH, since the TISCH labels may include automated cell type labels and sometimes conflict with the original labels.
+
+The links to the original labels are as follows:
+* [Training](https://lambrechtslab.sites.vib.be/en/pan-cancer-blueprint-tumour-microenvironment-0) (requires creating free account to access data, stored as csv.gz)
+* [Test Set 1](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE148673) (stored in txt.gz by patient as columns with counts)
+* [Test Set 2](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE150660) (stored in h5ad by patient with counts)
 
 All datasets are public and all licenses are respected.
-
-
-## Dataset overview
-
 
 ## Code structure
 - main_functions.py: Contains helper functions used in notebooks (ex. loading data, training models)
@@ -37,4 +38,5 @@ All datasets are public and all licenses are respected.
 - Notebook 4 (4_highly_variable_genes.ipynb): Highly variable genes - metrics comparison, feature importance
 - Notebook 5 (5_HVG_and_DGE_GridsearchCV.ipynb): Model tuning with feature selection and testing with final model on hold-out datasets
 - Notebook 6 (6_ikarus.ipynb): Comparison with ikarus
-- Notebook 7 (7_compare_gene_sig.ipynb): Compare features from notebook 4 with known gene signatures from the literature
+- Notebook 7 (7_ikarus_xgboost_swapped_features.ipynb): ikarus and XGBoost models with swapped features
+- Notebook 8 (8_compare_gene_sig.ipynb): Compare features from notebook 4 with known gene signatures from the literature
