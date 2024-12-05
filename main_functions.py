@@ -147,6 +147,33 @@ def get_hvgs(adata, method):
 
     return hvg_df.index
 
+# Extract features from gene signature
+def get_feat_from_gene_sig(sig_path):
+    """
+        Purpose: Get list of features from gene signatures for tumor and normal cells
+        Inputs:
+            - sig_path: Path object or string containing path for gene signature
+        Output:
+            - List of combined features from gene signature
+    """
+    
+    # Load gene signatures using training set (ikarus approach)
+    gene_sig = pd.read_csv(sig_path, sep='\t', header=None, index_col = 0)
+    
+    # Transpose, get tumor and normal gene lists as columns
+    gene_sig_transpose = gene_sig.T
+    gene_sig_transpose = gene_sig_transpose.drop(index = 1).reset_index().rename(columns = {'index': 'gene_order'})
+    gene_sig_transpose['gene_order'] = gene_sig_transpose['gene_order'] - 1
+
+    # Get lists of tumor and normal genes from gene signatures
+    tumor_genes = gene_sig_transpose['Tumor'].dropna().to_list()
+    norm_genes = gene_sig_transpose['Normal'].dropna().to_list()
+    
+    # Combine lists
+    gene_list = list(set(tumor_genes).union(norm_genes))
+
+    return gene_list
+
 # Function with cross-validation applied to training dataset
 # Generates evaluation metrics for lists of feature selection methods and numbers of features
 def train_feat_loop_cv(clf, adata, groups_label, num_feat_list, feat_method_list,
@@ -303,6 +330,36 @@ def train_test_model(clf, train_df, train_labels, test_df, test_labels, features
     print(conf_matrix)
     display(metrics_df)
   
+    return metrics_df, conf_matrix
+
+# Outputs evaluation metrics only, without combining with training/testing
+def calc_eval_metrics(test_labels, y_pred, model_type_str, feat_type_str, network_prop_str, dataset_str):
+    """
+      Purpose: Outputs evaluation metrics, given observed and predicted labels
+      Inputs:
+        - test_labels: Test labels
+        - y_pred: Predicted labels
+        - model_type_str: String indicating model type ("ikarus", "DGE")
+        - feat_type_str: String indicating feature set used ("ikarus", "DGE")
+        - network_prop_str: String indicating whether network propgation was used ("yes", "no")
+        - dataset_str: String indicating dataset used ("test1", "test2")
+      Output:
+        - Dataframe of evaluation metrics
+        - Confusion matrix
+    """
+    recall = recall_score(test_labels, y_pred)
+    precision = precision_score(test_labels, y_pred)
+    accuracy = accuracy_score(test_labels, y_pred)
+    f1 = f1_score(test_labels, y_pred)
+
+    metrics_df = pd.DataFrame({'recall': [recall], 'precision': [precision],
+                               'f1': [f1], 'accuracy': [accuracy],
+                               'model': [model_type_str], 'feat_set': [feat_type_str],
+                               'network_prop': [network_prop_str], 'dataset': [dataset_str]
+                               })
+    metrics_df = metrics_df.round(3)
+    conf_matrix = confusion_matrix(test_labels, y_pred)
+
     return metrics_df, conf_matrix
 
 # Generate line plots of metrics from train_feat_loop_cv
