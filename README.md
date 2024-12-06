@@ -29,7 +29,9 @@ The links to the original labels are as follows:
 
 All datasets are public and all licenses are respected.
 
-## Code structure
+## Code structure and How to Run:
+Unfortunately, due to large file size, the datasets could not be included in the depository. Instead, please refer to links above to download the matrices and labels, and then run Notebook 0 to create the files. Then simply run the rest of the files in order.
+
 - main_functions.py: Contains helper functions used in notebooks (ex. loading data, training models)
 - Notebook 0 (0_create_datasets_stats.ipynb): Loading datasets, dataset exploration and statistics
 - Notebook 1 (1_Baseline_CV.ipynb): Baseline model comparison on training set
