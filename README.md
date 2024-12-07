@@ -36,9 +36,9 @@ Unfortunately, due to large file size, the datasets could not be included in the
 - Notebook 0 (0_create_datasets_stats.ipynb): Loading datasets, dataset exploration and statistics
 - Notebook 1 (1_Baseline_CV.ipynb): Baseline model comparison on training set
 - Notebook 2 (2_Baseline_SHAP.ipynb): Feature importance on XGBoost baseline model with all features
-- Notebook 3 (3_differential_gene_expression.ipynb): Differential gene expression (Not used in main report although visualizations used in Appendix)
-- Notebook 4 (4_highly_variable_genes.ipynb): Highly variable genes - metrics comparison, feature importance
-- Notebook 5 (5_HVG_and_DGE_GridsearchCV.ipynb): Model tuning with feature selection and testing with final model on hold-out datasets
+- Notebook 3 (3_highly_variable_genes.ipynb): Highly variable genes - metrics comparison, feature importance
+- Notebook 4 (4_HVG_and_DGE_GridsearchCV.ipynb): Model tuning with feature selection and testing with final model on hold-out datasets
+- Notebook 5 (5_differential_gene_expression.ipynb): Differential gene expression (Not used in main report although visualizations used in Appendix)
 - Notebook 6 (6_ikarus.ipynb): Comparison with ikarus
 - Notebook 7 (7_ikarus_xgboost_swapped_features.ipynb): ikarus and XGBoost models with swapped features
 - Notebook 8 (8_compare_gene_sig.ipynb): Compare features from notebook 4 with known gene signatures from the literature
