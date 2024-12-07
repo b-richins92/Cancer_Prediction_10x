@@ -43,4 +43,4 @@ Unfortunately, due to large file size, the datasets could not be included in the
 - Notebook 5 (5_differential_gene_expression.ipynb): Differential gene expression (Not used in main report although visualizations used in Appendix)
 - Notebook 6 (6_ikarus.ipynb): Comparison with ikarus
 - Notebook 7 (7_ikarus_xgboost_swapped_features.ipynb): ikarus and XGBoost models with swapped features
-- Notebook 8 (8_compare_gene_sig.ipynb): Compare features from notebook 4 with known gene signatures from the literature
+- Notebook 8 (8_compare_gene_sig.ipynb): Compare features from notebook 3 with known gene signatures from the literature
