@@ -89,3 +89,4 @@ xgboost==2.1.2
 xyzservices==2024.9.0
 yarl==1.18.0
 zict==3.0.0
+umap==0.1.1
