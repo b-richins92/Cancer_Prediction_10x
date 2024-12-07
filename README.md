@@ -5,8 +5,9 @@ Team Members: Shriya Goel, Gretchen Lam, Bryan Richins
 
 Project goals:
 - Develop machine learning classifier for cancerous cells using breast cancer single-cell RNA sequencing (scRNAseq) data
-- Identify cancer biomarkers important for cancer prediction
+- Find best performing basline model, then use that model to test for optimal feature selection method and number of features for future hyperparameter tuning.
 - Compare our results with ikarus, a publish pan-cancer classifier
+- Identify cancer biomarkers important for cancer prediction
 
 ## Model requirements
 Install using the following command in command prompt:
