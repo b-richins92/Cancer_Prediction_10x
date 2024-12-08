@@ -11,7 +11,7 @@ Project goals:
 
 ## Model requirements
 Install using the following command in command prompt:
-```pip install -r requirements.txt``` \n
+```pip install -r requirements.txt```
 Note: Depending on the operating system, the library "louvain" may or not insall using pip install command. If it does not install, then notebook 5 may not be able to perform UMAP visualizations, however these visualizations were not incorporated into the main body of the report.
 
 ## Data Access Statement
